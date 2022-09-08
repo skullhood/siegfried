@@ -1,7 +1,6 @@
-use std::{mem, io::Write};
 
-use siegfried::{maps::*, display::print_bitboard, masks::{mask_rook_attacks, mask_bishop_attacks}, bitboard::{RANK_2BB, FILE_FBB}, magic, };
-use siegfried::bitboard::{Bitboard, SquareBitboardMethods};
+use siegfried::{maps::*, display::print_bitboard, bitboard::FILE_FBB};
+use siegfried::bitboard::SquareBitboardMethods;
 use siegfried::types::*;
 
 

@@ -50,7 +50,7 @@ pub trait SquareBitboardMethods {
 
 impl SquareBitboardMethods for Bitboard{
     fn set_bit(&self, square: Square) -> Bitboard{
-        let mut board = 1;
+        let board = 1;
         return self|(board << square.0);
     }
 }

@@ -1,4 +1,4 @@
-use std::{fmt::Display, fmt::Formatter, fmt::Result, ops::{Not, Index, IndexMut, BitAnd, Shl}};
+use std::{fmt::Display, fmt::Formatter, fmt::Result, ops::{Not, Index, IndexMut}};
 
 use bitintr::Pext;
 
@@ -122,7 +122,7 @@ impl IntoIterator for Squares{
     type Item = Square;
     type IntoIter = std::array::IntoIter<Square, 64>;
     fn into_iter(self) -> Self::IntoIter {
-        std::array::IntoIter::new([
+        std::array::IntoIter::into_iter([
             Square::A1, Square::B1, Square::C1, Square::D1,
             Square::E1, Square::F1, Square::G1, Square::H1,
             Square::A2, Square::B2, Square::C2, Square::D2,
@@ -139,7 +139,7 @@ impl IntoIterator for Squares{
             Square::E7, Square::F7, Square::G7, Square::H7,
             Square::A8, Square::B8, Square::C8, Square::D8,
             Square::E8, Square::F8, Square::G8, Square::H8,
-        ])
+        ].into_iter())
     }
 }
 

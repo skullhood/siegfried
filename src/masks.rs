@@ -46,10 +46,10 @@ pub fn mask_knight_attacks(square: Square) -> Bitboard{
 }
 
 //BISHOP MASK
-const NW_CORNER: Bitboard = (RANK_8BB|FILE_HBB);
-const NE_CORNER: Bitboard = (RANK_8BB|FILE_ABB);
-const SE_CORNER: Bitboard = (RANK_1BB|FILE_ABB);
-const SW_CORNER: Bitboard = (RANK_1BB|FILE_HBB);
+const NW_CORNER: Bitboard = RANK_8BB|FILE_HBB;
+const NE_CORNER: Bitboard = RANK_8BB|FILE_ABB;
+const SE_CORNER: Bitboard = RANK_1BB|FILE_ABB;
+const SW_CORNER: Bitboard = RANK_1BB|FILE_HBB;
 
 pub fn mask_bishop_attacks(square: Square, occupancy: Bitboard) -> Bitboard {
     let mut attacks: Bitboard = 0;

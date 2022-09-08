@@ -16,15 +16,14 @@ pub const BIT_1 : u8 = 0b00000001;
 fn get_rank_string(rank: u8) -> String{
     let mut rank_string: String = String::from("");
 
-    if(rank&BIT_1==0){rank_string+=" . "}else{rank_string+=" 1 "}
-    if(rank&BIT_2==0){rank_string+=" . "}else{rank_string+=" 1 "}
-    if(rank&BIT_3==0){rank_string+=" . "}else{rank_string+=" 1 "}
-    if(rank&BIT_4==0){rank_string+=" . "}else{rank_string+=" 1 "}
-    if(rank&BIT_5==0){rank_string+=" . "}else{rank_string+=" 1 "}
-    if(rank&BIT_6==0){rank_string+=" . "}else{rank_string+=" 1 "}
-    if(rank&BIT_7==0){rank_string+=" . "}else{rank_string+=" 1 "}
-    if(rank&BIT_8==0){rank_string+=" . "}else{rank_string+=" 1 "}    
-
+    if rank&BIT_1==0{rank_string+=" . "}else{rank_string+=" 1 "}
+    if rank&BIT_2==0{rank_string+=" . "}else{rank_string+=" 1 "}
+    if rank&BIT_3==0{rank_string+=" . "}else{rank_string+=" 1 "}
+    if rank&BIT_4==0{rank_string+=" . "}else{rank_string+=" 1 "}
+    if rank&BIT_5==0{rank_string+=" . "}else{rank_string+=" 1 "}
+    if rank&BIT_6==0{rank_string+=" . "}else{rank_string+=" 1 "}
+    if rank&BIT_7==0{rank_string+=" . "}else{rank_string+=" 1 "}
+    if rank&BIT_8==0{rank_string+=" . "}else{rank_string+=" 1 "}     
     return rank_string;
 }
 

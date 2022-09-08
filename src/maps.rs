@@ -1,13 +1,7 @@
-use crate::display::print_bitboard;
 use crate::masks::*;
 use crate::bitboard::*;
-use crate::magic::*;
 use crate::types::Magic;
-use crate::types::MagicIndex;
 use crate::types::Squares;
-use rand::Rng;
-use rand::RngCore;
-use rand_pcg::Pcg64;
 use bitintr::Pext;
 
 use crate::lazy_static::lazy_static;
@@ -67,10 +61,9 @@ pub fn get_bishop_magics() -> Vec<Magic>{
     let mut reference: [Bitboard; 4096] = [0; 4096];
     let mut b: Bitboard;
 
-    let mut size: usize = 0;
+    let mut size: usize;
 
     for square in Squares{
-        println!("Square: {}", square.0);
         let bishop_mask = bishop_blockmap[square];
 
         let mut magic = Magic{
@@ -143,10 +136,9 @@ pub fn get_rook_magics() -> Vec<Magic>{
     let mut reference: [Bitboard; 4096] = [0; 4096];
     let mut b: Bitboard;
 
-    let mut size: usize = 0;
+    let mut size: usize;
 
     for square in Squares{
-        println!("Square: {}", square.0);
         let bishop_mask = bishop_blockmap[square];
 
         let mut magic = Magic{
