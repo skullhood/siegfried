@@ -1,12 +1,13 @@
-use crate::{bitboard::*, types::Square};
+use crate::{bitboard::*, types::{Square, Side, SideConstants}};
 
-pub fn mask_pawn_attacks(side: usize, square: Square) -> Bitboard{
 
-    let pawn = 1 << square.0;
+pub fn mask_pawn_attacks(side: Side, square: Square) -> Bitboard{
+
+    let pawn = 1 << square;
 
     let mut attacks: Bitboard = 0;
 
-    if side == 0{
+    if side == Side::WHITE {
         if pawn & FILE_HBB == 0 {attacks |= pawn << 9};
         if pawn & FILE_ABB == 0 {attacks |= pawn << 7};
         return attacks;
@@ -20,7 +21,7 @@ pub fn mask_pawn_attacks(side: usize, square: Square) -> Bitboard{
 pub fn mask_knight_attacks(square: Square) -> Bitboard{
     let mut attacks: Bitboard = 0;
 
-    let knight = 1 << square.0;
+    let knight = 1 << square;
 
     if knight & (FILE_HBB) == 0 { 
         attacks |= knight << 17;
@@ -54,7 +55,7 @@ const SW_CORNER: Bitboard = RANK_1BB|FILE_HBB;
 pub fn mask_bishop_attacks(square: Square, occupancy: Bitboard) -> Bitboard {
     let mut attacks: Bitboard = 0;
 
-    let bishop = 1 << square.0;
+    let bishop = 1 << square;
     
     //NW ray calculation
     if bishop & NW_CORNER == 0{
@@ -111,7 +112,7 @@ pub fn mask_bishop_attacks(square: Square, occupancy: Bitboard) -> Bitboard {
 pub fn mask_rook_attacks(square: Square, occupancy: Bitboard) -> Bitboard{
     let mut attacks: Bitboard = 0;
 
-    let rook = 1 << square.0;
+    let rook = 1 << square;
 
     //NORTH 
     if rook & RANK_8BB == 0{
@@ -166,7 +167,7 @@ pub fn mask_rook_attacks(square: Square, occupancy: Bitboard) -> Bitboard{
 pub fn mask_king_attacks(square: Square) -> Bitboard{
     let mut attacks: Bitboard = 0;
 
-    let king = 1 << square.0;
+    let king = 1 << square;
 
     //Left Shift
     if king & FILE_HBB == 0{

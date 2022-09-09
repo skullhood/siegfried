@@ -1,9 +1,11 @@
-use std::{fmt::Display, fmt::Formatter, fmt::Result, ops::{Not, Index, IndexMut}};
+use std::{fmt::Display, fmt::Formatter, fmt::Result, ops::{Not}};
 
 use bitintr::Pext;
 
 use crate::bitboard::*;
 
+#[derive(Copy)]
+#[derive(Clone)]
 pub struct Magic{
     pub mask: Bitboard,
     pub magic: Bitboard,
@@ -57,10 +59,8 @@ impl Display for Side {
     }
 }
 
-
 //SQUARES
-#[derive(Debug, Copy, Clone)]
-pub struct Square(pub u8);
+pub type Square = u8;
 
 pub trait SquareConstants{
     const A1: Square; const B1: Square; const C1: Square; const D1: Square; 
@@ -81,39 +81,43 @@ pub trait SquareConstants{
     const E8: Square; const F8: Square; const G8: Square; const H8: Square;
 }
 
+pub trait SquareMethods{
+
+}
+
 impl SquareConstants for Square{
-    const A1: Square = Square(0);  const B1: Square = Square(1);
-    const C1: Square = Square(2);  const D1: Square = Square(3);
-    const E1: Square = Square(4);  const F1: Square = Square(5);
-    const G1: Square = Square(6);  const H1: Square = Square(7);
-    const A2: Square = Square(8);  const B2: Square = Square(9);
-    const C2: Square = Square(10); const D2: Square = Square(11);
-    const E2: Square = Square(12); const F2: Square = Square(13);
-    const G2: Square = Square(14); const H2: Square = Square(15);
-    const A3: Square = Square(16); const B3: Square = Square(17);
-    const C3: Square = Square(18); const D3: Square = Square(19);
-    const E3: Square = Square(20); const F3: Square = Square(21);
-    const G3: Square = Square(22); const H3: Square = Square(23);
-    const A4: Square = Square(24); const B4: Square = Square(25);
-    const C4: Square = Square(26); const D4: Square = Square(27);
-    const E4: Square = Square(28); const F4: Square = Square(29);
-    const G4: Square = Square(30); const H4: Square = Square(31);
-    const A5: Square = Square(32); const B5: Square = Square(33);
-    const C5: Square = Square(34); const D5: Square = Square(35);
-    const E5: Square = Square(36); const F5: Square = Square(37);
-    const G5: Square = Square(38); const H5: Square = Square(39);
-    const A6: Square = Square(40); const B6: Square = Square(41);
-    const C6: Square = Square(42); const D6: Square = Square(43);
-    const E6: Square = Square(44); const F6: Square = Square(45);
-    const G6: Square = Square(46); const H6: Square = Square(47);
-    const A7: Square = Square(48); const B7: Square = Square(49);
-    const C7: Square = Square(50); const D7: Square = Square(51);
-    const E7: Square = Square(52); const F7: Square = Square(53);
-    const G7: Square = Square(54); const H7: Square = Square(55);
-    const A8: Square = Square(56); const B8: Square = Square(57);
-    const C8: Square = Square(58); const D8: Square = Square(59);
-    const E8: Square = Square(60); const F8: Square = Square(61);
-    const G8: Square = Square(62); const H8: Square = Square(63);
+    const A1: Square = 0;  const B1: Square = 1;
+    const C1: Square = 2;  const D1: Square = 3;
+    const E1: Square = 4;  const F1: Square = 5;
+    const G1: Square = 6;  const H1: Square = 7;
+    const A2: Square = 8;  const B2: Square = 9;
+    const C2: Square = 10; const D2: Square = 11;
+    const E2: Square = 12; const F2: Square = 13;
+    const G2: Square = 14; const H2: Square = 15;
+    const A3: Square = 16; const B3: Square = 17;
+    const C3: Square = 18; const D3: Square = 19;
+    const E3: Square = 20; const F3: Square = 21;
+    const G3: Square = 22; const H3: Square = 23;
+    const A4: Square = 24; const B4: Square = 25;
+    const C4: Square = 26; const D4: Square = 27;
+    const E4: Square = 28; const F4: Square = 29;
+    const G4: Square = 30; const H4: Square = 31;
+    const A5: Square = 32; const B5: Square = 33;
+    const C5: Square = 34; const D5: Square = 35;
+    const E5: Square = 36; const F5: Square = 37;
+    const G5: Square = 38; const H5: Square = 39;
+    const A6: Square = 40; const B6: Square = 41;
+    const C6: Square = 42; const D6: Square = 43;
+    const E6: Square = 44; const F6: Square = 45;
+    const G6: Square = 46; const H6: Square = 47;
+    const A7: Square = 48; const B7: Square = 49;
+    const C7: Square = 50; const D7: Square = 51;
+    const E7: Square = 52; const F7: Square = 53;
+    const G7: Square = 54; const H7: Square = 55;
+    const A8: Square = 56; const B8: Square = 57;
+    const C8: Square = 58; const D8: Square = 59;
+    const E8: Square = 60; const F8: Square = 61;
+    const G8: Square = 62; const H8: Square = 63;
 }
 
 pub struct Squares;
@@ -142,39 +146,4 @@ impl IntoIterator for Squares{
         ].into_iter())
     }
 }
-
-impl Index<Square> for [u64]
-{
-    type Output = u64;
-
-    fn index(&self, index: Square) -> &Self::Output {
-        &self[index.0 as usize]
-    }
-}
-
-impl Index<Square> for [Box<[u64]>]
-{
-    type Output = Box<[u64]>;
-
-    fn index(&self, index: Square) -> &Self::Output {
-        &self[index.0 as usize]
-    }
-}
-
-impl Index<Square> for [Vec<[u64; 4096]>]
-{
-    type Output = Vec<[u64; 4096]>;
-
-    fn index(&self, index: Square) -> &Self::Output {
-        &self[index.0 as usize]
-    }
-}
-
-impl IndexMut<Square> for [u64]
-{
-    fn index_mut(&mut self, index: Square) -> &mut Self::Output {
-        &mut self[index.0 as usize]
-    }
-}
-
 

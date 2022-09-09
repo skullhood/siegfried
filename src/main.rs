@@ -1,29 +1,48 @@
 
-use siegfried::{maps::*, display::print_bitboard, bitboard::FILE_FBB};
-use siegfried::bitboard::SquareBitboardMethods;
-use siegfried::types::*;
-
-
+use siegfried::{display::print_bitboard, bitboard::FILE_FBB};
+use siegfried::bitboard::{BitboardMethods};
+ 
 fn main() {
 
-    let magics = get_rook_magics();
+    /*
+        let magics = get_rook_magics();
+        let magic_for_bishop = &magics[bishop_position.0 as usize];
+        let idx = magic_for_bishop.get_index(occupancy);
+        print_bitboard(magic_for_bishop.attacks[idx]);  
+    */
+    let mut occupancy = FILE_FBB;
 
-    let mut occupancy = 0.set_bit(Square::A7).set_bit(Square::F8).set_bit(Square::E3);
-    occupancy |= FILE_FBB;
+    println!("Occupancy:");
 
-    println!("Occupancy");
     print_bitboard(occupancy);
 
-    let bishop_position = Square::D4;
-    let bishop_board = 0.set_bit(bishop_position);
+    //pop lsb
+    let lsb = occupancy.pop_lsb();
 
-    println!("Bishop");
-    print_bitboard(bishop_board);
+    println!("LSB:");
+    
+    print_bitboard(lsb);
 
-    println!("Attack Map");
-    let magic_for_bishop = &magics[bishop_position.0 as usize];
-    let idx = magic_for_bishop.get_index(occupancy);
-    print_bitboard(magic_for_bishop.attacks[idx]);
+    //get all squares
+    let squares = 0.get_squares();
+
+    println!("Squares:");
+
+    for square in squares{
+        print!("{:#?} ", square);
+    }
+
+    println!("Occupancy after pop:");
+
+    print_bitboard(occupancy);
+
+    /* 
+    let pawn_position: Bitboard = 0.set_bit(Square::H4);
+
+    println!("Pawn");
+
+    println!("Pawn Move");
+    */
     
 }
 

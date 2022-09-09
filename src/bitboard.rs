@@ -33,6 +33,9 @@ pub type Bitboard = u64;
 pub trait BitboardMethods {
     fn set_bit(&self, board: Bitboard) -> Bitboard;
     fn unset_bit(&self, board: Bitboard) -> Bitboard;
+    fn pop_lsb(&mut self) -> Bitboard;
+    fn lsb_to_square(&self) -> Square;
+    fn get_squares(&self) -> Vec<Square>;
 }
 
 impl BitboardMethods for Bitboard{
@@ -42,18 +45,30 @@ impl BitboardMethods for Bitboard{
     fn unset_bit(&self, square: Bitboard) -> Bitboard {
         return self^square;
     }
-}
 
-pub trait SquareBitboardMethods {
-    fn set_bit(&self, square: Square) -> Bitboard;
-}
-
-impl SquareBitboardMethods for Bitboard{
-    fn set_bit(&self, square: Square) -> Bitboard{
-        let board = 1;
-        return self|(board << square.0);
+    fn pop_lsb(&mut self) -> Bitboard {
+        //mutate self
+        let lsb = *self&(!*self+1);
+        *self ^= lsb;
+        return lsb;
     }
+
+    fn lsb_to_square(&self) -> Square {
+        return self.trailing_zeros() as Square;
+    }
+
+    fn get_squares(&self) -> Vec<Square> {
+        let mut squares: Vec<Square> = Vec::new();
+        let mut board = *self;
+        while board != 0 {
+            squares.push(board.pop_lsb().trailing_zeros() as u8);
+        }
+        return squares;
+    }
+    
 }
+
+
 
 
 

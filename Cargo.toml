@@ -7,6 +7,7 @@ edition = "2021"
 
 [env]
 RUST_BACKTRACE=1
+RUSTFLAGS="-C link-args=-Wl,-zstack-size=4194304"
 
 [dependencies]
 lazy_static = "1.4.0"
