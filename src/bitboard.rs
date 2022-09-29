@@ -1,4 +1,16 @@
-use crate::types::*;
+use std::ops::Shr;
+
+use crate::{types::*, display::print_bitboard};
+
+//SQUARES
+pub const DARK_SQUARES: Bitboard = 0xAA55AA55AA55AA55;
+pub const LIGHT_SQUARES: Bitboard = 0x55AA55AA55AA55AA;
+
+pub const WHITE_KINGSIDE_CASTLE: Bitboard = 0x60;
+pub const WHITE_QUEENSIDE_CASTLE: Bitboard = 0xE;
+pub const BLACK_KINGSIDE_CASTLE: Bitboard = 0x6000000000000000;
+pub const BLACK_QUEENSIDE_CASTLE: Bitboard = 0xE00000000000000;
+
 
 //FILES - or - COLUMNS
 pub const FILE_ABB: Bitboard = 0x0101010101010101;
@@ -31,19 +43,29 @@ pub const NOT_OUTER: Bitboard = NOT_FILE_ABB&NOT_FILE_HBB&NOT_RANK_1BB&NOT_RANK_
 pub type Bitboard = u64;
 
 pub trait BitboardMethods {
-    fn set_bit(&self, board: Bitboard) -> Bitboard;
-    fn unset_bit(&self, board: Bitboard) -> Bitboard;
+    fn set_bit(&self, square: Square) -> Bitboard;
+    fn unset_bit(&self, square: Square) -> Bitboard;
     fn pop_lsb(&mut self) -> Bitboard;
-    fn lsb_to_square(&self) -> Square;
+    fn to_square(&self) -> Square;
+    fn from_square(square: Square) -> Bitboard;
     fn get_squares(&self) -> Vec<Square>;
 }
 
+pub trait BitboardConstants {
+    const EMPTY: Bitboard;
+}
+
+impl BitboardConstants for Bitboard {
+    const EMPTY: Bitboard = 0;
+}
+
 impl BitboardMethods for Bitboard{
-    fn set_bit(&self, square: Bitboard) -> Bitboard {
-        return self|square;
+    fn set_bit(&self, square: Square) -> Bitboard {
+        return self | Bitboard::from_square(square);
     }
-    fn unset_bit(&self, square: Bitboard) -> Bitboard {
-        return self^square;
+
+    fn unset_bit(&self, square: Square) -> Bitboard {
+        return self & !Bitboard::from_square(square);
     }
 
     fn pop_lsb(&mut self) -> Bitboard {
@@ -53,8 +75,12 @@ impl BitboardMethods for Bitboard{
         return lsb;
     }
 
-    fn lsb_to_square(&self) -> Square {
+    fn to_square(&self) -> Square {
         return self.trailing_zeros() as Square;
+    }
+
+    fn from_square(square: Square) -> Bitboard {
+        return 1_u64 << square as u8;
     }
 
     fn get_squares(&self) -> Vec<Square> {

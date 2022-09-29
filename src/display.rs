@@ -1,6 +1,20 @@
 use std::ops::Shr;
 
-use crate::bitboard::*;
+use crate::{bitboard::*, position::{Position, SidePiecesMethods}, types::*};
+
+const UNICODE_WHITE_PAWN: char = '♙';
+const UNICODE_WHITE_KNIGHT: char = '♘';
+const UNICODE_WHITE_BISHOP: char = '♗';
+const UNICODE_WHITE_ROOK: char = '♖';
+const UNICODE_WHITE_QUEEN: char = '♕';
+const UNICODE_WHITE_KING: char = '♔';
+
+const UNICODE_BLACK_PAWN: char = '♟';
+const UNICODE_BLACK_KNIGHT: char = '♞';
+const UNICODE_BLACK_BISHOP: char = '♝';
+const UNICODE_BLACK_ROOK: char = '♜';
+const UNICODE_BLACK_QUEEN: char = '♛';
+const UNICODE_BLACK_KING: char = '♚';
 
 //BIT PRINTING UTILITY CONSTANTS
 pub const BIT_8 : u8 = 0b10000000;
@@ -47,4 +61,69 @@ pub fn print_bitboard(board: Bitboard){
     println!("2   {}", get_rank_string(rank2));
     println!("1   {}", get_rank_string(rank1));
     println!("\n     A  B  C  D  E  F  G  H");
+}
+
+pub fn print_position(position: &Position){
+    println!("");
+    for rank in (1..9).rev(){
+        println!();
+        print!("{}   ", rank);
+        for file in 1..9{
+            //match rank and file to square
+            let square: u8 = (rank-1)*8+file-1;
+            let square_bb = Bitboard::from_square(square);
+            let side = if square_bb & position.pieces[Side::WHITE.0].occupancy() != 0 {Side::WHITE} else {Side::BLACK};
+            let piece_type = position.pieces[side.0].get_piece_type_at_square(square);
+            if piece_type.is_none(){
+                print!(".  ");
+            }else{
+                let piece_type = piece_type.unwrap();
+
+                if piece_type == PAWN{
+                    if side == Side::WHITE{
+                        print!("{}  ", UNICODE_WHITE_PAWN);
+                    }else{
+                        print!("{}  ", UNICODE_BLACK_PAWN);
+                    }
+                }
+                else if piece_type == KNIGHT{
+                    if side == Side::WHITE{
+                        print!("{}  ", UNICODE_WHITE_KNIGHT);
+                    }else{
+                        print!("{}  ", UNICODE_BLACK_KNIGHT);
+                    }
+                }
+                else if piece_type == BISHOP{
+                    if side == Side::WHITE{
+                        print!("{}  ", UNICODE_WHITE_BISHOP);
+                    }else{
+                        print!("{}  ", UNICODE_BLACK_BISHOP);
+                    }
+                }
+                else if piece_type == ROOK{
+                    if side == Side::WHITE{
+                        print!("{}  ", UNICODE_WHITE_ROOK);
+                    }else{
+                        print!("{}  ", UNICODE_BLACK_ROOK);
+                    }
+                }
+                else if piece_type == QUEEN{
+                    if side == Side::WHITE{
+                        print!("{}  ", UNICODE_WHITE_QUEEN);
+                    }else{
+                        print!("{}  ", UNICODE_BLACK_QUEEN);
+                    }
+                }
+                else if piece_type == KING{
+                    if side == Side::WHITE{
+                        print!("{}  ", UNICODE_WHITE_KING);
+                    }else{
+                        print!("{}  ", UNICODE_BLACK_KING);
+                    }
+                }
+            }
+        }
+    }
+    println!("\n\n    A  B  C  D  E  F  G  H");
+    println!("")
 }

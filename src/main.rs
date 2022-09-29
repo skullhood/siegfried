@@ -1,49 +1,62 @@
+use rand::{Rng, seq::SliceRandom};
+use siegfried::{
+    bitboard::*, 
+    types::{
+        Square, 
+        SquareConstants, Side, SideConstants, GameState, GameStateConstants, Squares
+    }, 
+    maps::{
+        DIRECTIONAL_MAP_FILE, 
+        DIRECTIONAL_MAP_RANK, 
+        DIRECTIONAL_MAP_DD,
+        DIRECTIONAL_MAP_DA,
+        load_maps, get_ray_between_squares
+    }, position::{Position, ZobristMoveStack, SidePiecesMethods, PositionEvaluation}, display::{print_position, print_bitboard}
+};
 
-use siegfried::{display::print_bitboard, bitboard::FILE_FBB};
-use siegfried::bitboard::{BitboardMethods};
- 
 fn main() {
 
-    /*
-        let magics = get_rook_magics();
-        let magic_for_bishop = &magics[bishop_position.0 as usize];
-        let idx = magic_for_bishop.get_index(occupancy);
-        print_bitboard(magic_for_bishop.attacks[idx]);  
-    */
-    let mut occupancy = FILE_FBB;
+    load_maps();
 
-    println!("Occupancy:");
+    let position = Position::new();
 
-    print_bitboard(occupancy);
+ 
+    let mut positions: Vec<Position> = Vec::new();
+    positions.push(position);
 
-    //pop lsb
-    let lsb = occupancy.pop_lsb();
+    let mut last_game_state = GameState::IN_PROGRESS;
 
-    println!("LSB:");
-    
-    print_bitboard(lsb);
+    let mut move_count = 0;
 
-    //get all squares
-    let squares = 0.get_squares();
-
-    println!("Squares:");
-
-    for square in squares{
-        print!("{:#?} ", square);
+    while last_game_state == GameState::IN_PROGRESS || last_game_state == GameState::CHECK{
+        let last_position = positions.last().unwrap();
+        let eval = last_position.evaluate(None);
+        last_game_state = eval.game_state;
+        let mut rng = rand::thread_rng();
+        let mut moves = eval.moves;
+        //pick a random move
+        let move_clone = moves.clone();
+        if moves.len() == 0{
+            println!("GameState: {}", last_game_state);
+            break;
+        }
+        let random_move = move_clone.choose(&mut rng).clone().unwrap();
+        
+        let mut new_position = last_position.make_move(*random_move);
+        positions.push(new_position);
+        move_count += 1;
+        if(move_count % 25 == 0){
+            println!("Move count: {}", move_count);
+            print_position(&position);
+        }
     }
 
-    println!("Occupancy after pop:");
-
-    print_bitboard(occupancy);
-
-    /* 
-    let pawn_position: Bitboard = 0.set_bit(Square::H4);
-
-    println!("Pawn");
-
-    println!("Pawn Move");
-    */
-    
+    println!("Game over! Move count: {}", move_count);
+    let last_position = positions.last().unwrap();
+    print_position(last_position);
+    println!("GameState: {}", last_game_state);
+    //debug eval last position
+    let eval = last_position.evaluate(Some(true));
 }
 
 

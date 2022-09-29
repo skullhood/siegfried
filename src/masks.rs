@@ -1,6 +1,125 @@
 use crate::{bitboard::*, types::{Square, Side, SideConstants}};
 
+//CORNER MASKS
+const NE_CORNER: Bitboard = RANK_8BB|FILE_HBB;
+const NW_CORNER: Bitboard = RANK_8BB|FILE_ABB;
+const SW_CORNER: Bitboard = RANK_1BB|FILE_ABB;
+const SE_CORNER: Bitboard = RANK_1BB|FILE_HBB;
 
+pub fn get_file_mask(square: Square) -> Bitboard {
+    let mut mask: Bitboard = 0;
+    let square_bb = Bitboard::from_square(square);
+
+    if square_bb & RANK_8BB == 0{
+        for x in 1..8{
+            let line = 8 * x;
+            let ray = square_bb << line;
+            mask |= ray;
+            if ray & RANK_8BB != 0{
+                break;
+            }
+        }
+    }
+    if square_bb & RANK_1BB == 0{
+        for x in 1..8{
+            let line = 8 * x;
+            let ray = square_bb >> line;
+            mask |= ray;
+            if ray & RANK_1BB != 0{
+                break;
+            }
+        }
+    }
+    
+    return mask;
+}
+
+pub fn get_rank_mask(square: Square) -> Bitboard {
+    let mut mask: Bitboard = 0;
+    let square_bb = Bitboard::from_square(square);
+    
+    if square_bb & FILE_ABB == 0{
+        for x in 1..8{
+            let ray = square_bb >> x;
+            mask |= ray;
+            if ray & FILE_ABB != 0{
+                break;
+            }
+        }
+    }
+
+    if square_bb & FILE_HBB == 0{
+        for x in 1..8{
+            let ray = square_bb << x;
+            mask |= ray;
+            if ray & FILE_HBB != 0{
+                break;
+            }
+        }
+    }
+
+    return mask;
+}
+
+pub fn get_diagonal_descending_mask(square: Square) -> Bitboard {
+    let mut mask: Bitboard = 0;
+    let square_bb = Bitboard::from_square(square);
+    
+    if square_bb & NW_CORNER == 0{
+        for x in 1..8{
+            let diag = (6 * x) + x;
+            let ray = square_bb << diag;
+            mask |= ray;
+            if ray & NW_CORNER != 0{
+                break;
+            }
+        }
+    }
+
+    if square_bb & SE_CORNER == 0{
+        for x in 1..8{
+            let diag = (6 * x) + x;
+            let ray = square_bb >> diag;
+            mask |= ray;
+            if ray & SE_CORNER != 0{
+                break;
+            }
+        }
+    }
+
+    return mask;
+}
+
+pub fn get_diagonal_ascending_mask(square: Square) -> Bitboard {
+    let mut mask: Bitboard = 0;    
+    let square_bb = 1 << square;
+
+    if square_bb & SW_CORNER == 0{
+        for x in 1..8{
+            let diag = (8 * x) + x;
+            let ray = square_bb >> diag;
+            mask |= ray;
+            if ray & SW_CORNER != 0{
+                break;
+            }
+        }
+    }    
+
+    if square_bb & NE_CORNER == 0{
+        for x in 1..8{
+            let diag = (8 * x) + x;
+            let ray = square_bb << diag;
+            mask |= ray;
+            if ray & NE_CORNER != 0{
+                break;
+            }
+        }
+    }
+    
+    return mask;
+}
+
+//PAWN MASK
 pub fn mask_pawn_attacks(side: Side, square: Square) -> Bitboard{
 
     let pawn = 1 << square;
@@ -46,33 +165,15 @@ pub fn mask_knight_attacks(square: Square) -> Bitboard{
     return attacks;
 }
 
-//BISHOP MASK
-const NW_CORNER: Bitboard = RANK_8BB|FILE_HBB;
-const NE_CORNER: Bitboard = RANK_8BB|FILE_ABB;
-const SE_CORNER: Bitboard = RANK_1BB|FILE_ABB;
-const SW_CORNER: Bitboard = RANK_1BB|FILE_HBB;
-
 pub fn mask_bishop_attacks(square: Square, occupancy: Bitboard) -> Bitboard {
     let mut attacks: Bitboard = 0;
 
     let bishop = 1 << square;
     
-    //NW ray calculation
-    if bishop & NW_CORNER == 0{
-        for x in 1..8{
-            let diag = (8 * x) + x;
-            let ray = bishop << diag;
-            attacks |= ray;
-            if ray & NW_CORNER != 0 || ray & occupancy != 0{
-                break;
-            }
-        }
-    }
-
     //NE ray calculation
     if bishop & NE_CORNER == 0{
         for x in 1..8{
-            let diag = (6 * x) + x;
+            let diag = (8 * x) + x;
             let ray = bishop << diag;
             attacks |= ray;
             if ray & NE_CORNER != 0 || ray & occupancy != 0{
@@ -81,25 +182,37 @@ pub fn mask_bishop_attacks(square: Square, occupancy: Bitboard) -> Bitboard {
         }
     }
 
-    //SE ray calculation
-    if bishop & SE_CORNER == 0{
+    //NW ray calculation
+    if bishop & NW_CORNER == 0{
+        for x in 1..8{
+            let diag = (6 * x) + x;
+            let ray = bishop << diag;
+            attacks |= ray;
+            if ray & NW_CORNER != 0 || ray & occupancy != 0{
+                break;
+            }
+        }
+    }
+
+    //SW ray calculation
+    if bishop & SW_CORNER == 0{
         for x in 1..8{
             let diag = (8 * x) + x;
             let ray = bishop >> diag;
             attacks |= ray;
-            if ray & SE_CORNER != 0 || ray & occupancy != 0{
+            if ray & SW_CORNER != 0 || ray & occupancy != 0{
                 break;
             }
         }
     }    
 
-    //SW ray calculation
-    if bishop & SW_CORNER == 0{
+    //SE ray calculation
+    if bishop & SE_CORNER == 0{
         for x in 1..8{
             let diag = (6 * x) + x;
             let ray = bishop >> diag;
             attacks |= ray;
-            if ray & SW_CORNER != 0 || ray & occupancy != 0{
+            if ray & SE_CORNER != 0 || ray & occupancy != 0{
                 break;
             }
         }
@@ -149,7 +262,7 @@ pub fn mask_rook_attacks(square: Square, occupancy: Bitboard) -> Bitboard{
         }
     }
 
-    //EAST
+    //WEST
     if rook & FILE_HBB == 0{
         for x in 1..8{
             let ray = rook << x;

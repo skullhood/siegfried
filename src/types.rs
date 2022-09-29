@@ -1,8 +1,53 @@
 use std::{fmt::Display, fmt::Formatter, fmt::Result, ops::{Not}};
-
 use bitintr::Pext;
-
 use crate::bitboard::*;
+
+#[derive(PartialEq, Eq)]
+pub struct GameState(pub u8);
+pub type Piece = usize;
+pub type CastlingDirection = usize;
+
+//GAMESTATE CONSTANTS
+pub trait GameStateConstants{
+    const CHECKMATE: GameState;
+    const CHECK: GameState;
+    const DRAW: GameState;
+    const IN_PROGRESS: GameState;
+    const INVALID_STATE: GameState;
+}
+
+impl Display for GameState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        match *self{
+            GameState::CHECKMATE => write!(f, "CHECKMATE"),
+            GameState::CHECK => write!(f, "CHECK"),
+            GameState::DRAW => write!(f, "DRAW"),
+            GameState::IN_PROGRESS => write!(f, "IN_PROGRESS"),
+            GameState::INVALID_STATE => write!(f, "INVALID_STATE"),
+            _ => panic!("Error: Unexpected value in Side: {}", self)
+        }
+    }
+}
+
+impl GameStateConstants for GameState{
+    const CHECKMATE: GameState = GameState(0);
+    const CHECK: GameState = GameState(1);
+    const DRAW: GameState = GameState(2);
+    const IN_PROGRESS: GameState = GameState(3);
+    const INVALID_STATE: GameState = GameState(4);
+}
+
+//CASTLING SIDE
+pub const KING_SIDE : CastlingDirection = 0;
+pub const QUEEN_SIDE : CastlingDirection = 1;
+
+//PIECES
+pub const PAWN: Piece = 0;
+pub const KNIGHT: Piece = 1;
+pub const BISHOP: Piece = 2;
+pub const ROOK: Piece = 3;
+pub const QUEEN: Piece = 4;
+pub const KING: Piece = 5;
 
 #[derive(Copy)]
 #[derive(Clone)]
@@ -25,7 +70,9 @@ impl MagicIndex for Magic{
 
 //SIDES
 #[derive(PartialEq, Eq)]
-pub struct Side(pub u8);
+#[derive(Copy)]
+#[derive(Clone)]
+pub struct Side(pub usize);
 
 pub trait SideConstants{
     const WHITE: Side;
@@ -82,8 +129,18 @@ pub trait SquareConstants{
 }
 
 pub trait SquareMethods{
-
+    fn get_string(&self) -> String;
 }
+
+impl SquareMethods for Square{
+    fn get_string(&self) -> String{
+        let mut string = String::new();
+        string.push((self % 8 + 97) as u8 as char);
+        string.push((self / 8 + 49) as u8 as char);
+        return string;
+    }
+}
+
 
 impl SquareConstants for Square{
     const A1: Square = 0;  const B1: Square = 1;
