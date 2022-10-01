@@ -6,6 +6,7 @@ use crate::types::Side;
 use crate::types::SideConstants;
 use crate::types::Square;
 use crate::types::SquareConstants;
+use crate::types::SquareMethods;
 use crate::types::Squares;
 use bitintr::Pext;
 
@@ -98,20 +99,17 @@ pub fn get_ray_between_squares(from: Square, to: Square) -> Bitboard{
         }
     }
     else{
-        let file_diff = (from_file as i8 - to_file as i8).abs();
-        let rank_diff = (from_rank as i8 - to_rank as i8).abs();
-        if file_diff == rank_diff{
-            let lower_file = from_file.min(to_file);
-            let upper_file = from_file.max(to_file);
-            let lower_rank = from_rank.min(to_rank);
-            let upper_rank = from_rank.max(to_rank);
-            let mut file = lower_file + 1;
-            let mut rank = lower_rank + 1;
-            while file < upper_file && rank < upper_rank{
-                squares_between |= 1 << (rank * 8 + file);
-                file += 1;
-                rank += 1;
-            }
+        let file_diff = to_file as i8 - from_file as i8;
+        let rank_diff = to_rank as i8 - from_rank as i8;
+        let mut file = from_file as i8;
+        let mut rank = from_rank as i8;
+        let fsig =file_diff.signum();
+        let rsig = rank_diff.signum();
+
+        while file != to_file as i8 - fsig && rank != to_rank as i8 - rsig{
+            file += fsig;
+            rank += rsig;
+            squares_between |= 1 << (rank as usize * 8 + file as usize);
         }
     }
 
@@ -157,7 +155,7 @@ fn get_file_map() -> [Bitboard; 64] {
 pub fn get_pawn_moves(side: Side, square: Square, occupancy: Bitboard) -> Bitboard{
     let mut moves: Bitboard = 0;
 
-    let square_bb = Bitboard::from_square(square);
+    let square_bb = square.to_bitboard();
 
     if side == Side::WHITE{
         //get square in front of pawn

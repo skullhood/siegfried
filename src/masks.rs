@@ -1,4 +1,4 @@
-use crate::{bitboard::*, types::{Square, Side, SideConstants}};
+use crate::{bitboard::*, types::{Square, Side, SideConstants, SquareMethods}};
 
 //CORNER MASKS
 const NE_CORNER: Bitboard = RANK_8BB|FILE_HBB;
@@ -8,7 +8,7 @@ const SE_CORNER: Bitboard = RANK_1BB|FILE_HBB;
 
 pub fn get_file_mask(square: Square) -> Bitboard {
     let mut mask: Bitboard = 0;
-    let square_bb = Bitboard::from_square(square);
+    let square_bb = square.to_bitboard();
 
     if square_bb & RANK_8BB == 0{
         for x in 1..8{
@@ -36,7 +36,7 @@ pub fn get_file_mask(square: Square) -> Bitboard {
 
 pub fn get_rank_mask(square: Square) -> Bitboard {
     let mut mask: Bitboard = 0;
-    let square_bb = Bitboard::from_square(square);
+    let square_bb = square.to_bitboard();
     
     if square_bb & FILE_ABB == 0{
         for x in 1..8{
@@ -63,7 +63,7 @@ pub fn get_rank_mask(square: Square) -> Bitboard {
 
 pub fn get_diagonal_descending_mask(square: Square) -> Bitboard {
     let mut mask: Bitboard = 0;
-    let square_bb = Bitboard::from_square(square);
+    let square_bb = square.to_bitboard();
     
     if square_bb & NW_CORNER == 0{
         for x in 1..8{

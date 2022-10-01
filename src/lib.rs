@@ -7,5 +7,6 @@ pub mod types;
 pub mod masks;
 pub mod maps;
 
-
+#[cfg(test)]
+pub mod tests;
 

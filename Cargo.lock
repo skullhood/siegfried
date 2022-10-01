@@ -520,6 +520,7 @@ dependencies = [
  "lazy_static",
  "rand",
  "rand_pcg",
+ "serde_json",
 ]
 
 [[package]]

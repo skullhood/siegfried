@@ -1,4 +1,4 @@
-use std::ops::Shr;
+use std::ops::{Shr};
 
 use crate::{bitboard::*, position::{Position, SidePiecesMethods}, types::*};
 
@@ -43,6 +43,7 @@ fn get_rank_string(rank: u8) -> String{
 
 //Lazy but good enough way to print a bitboard
 pub fn print_bitboard(board: Bitboard){
+    
     let rank8 = (board&RANK_8BB).shr(8*7) as u8;
     let rank7 = (board&RANK_7BB).shr(8*6) as u8;
     let rank6 = (board&RANK_6BB).shr(8*5) as u8;
@@ -63,6 +64,29 @@ pub fn print_bitboard(board: Bitboard){
     println!("\n     A  B  C  D  E  F  G  H");
 }
 
+pub fn print_bitboard_alt(board: Bitboard){
+    let mut board_string: String = String::from("");
+
+    let ranks = [RANK_1BB, RANK_2BB, RANK_3BB, RANK_4BB, RANK_5BB, RANK_6BB, RANK_7BB, RANK_8BB];
+    let files = [FILE_ABB, FILE_BBB, FILE_CBB, FILE_DBB, FILE_EBB, FILE_FBB, FILE_GBB, FILE_HBB];
+
+    for rank in ranks.iter().rev(){
+        for file_iterator in 0..files.len(){
+            let file = files[file_iterator];
+            board_string += format!(" {} ", file_iterator).as_str();
+            if board&(*rank)&(file) != 0{
+                board_string += "1  ";
+            }else{
+                board_string += ".  ";
+            }
+        }
+        board_string += "\n";
+    }
+
+    println!("{}", board_string);
+}
+
+
 pub fn print_position(position: &Position){
     println!("");
     for rank in (1..9).rev(){
@@ -71,7 +95,7 @@ pub fn print_position(position: &Position){
         for file in 1..9{
             //match rank and file to square
             let square: u8 = (rank-1)*8+file-1;
-            let square_bb = Bitboard::from_square(square);
+            let square_bb = square.to_bitboard();
             let side = if square_bb & position.pieces[Side::WHITE.0].occupancy() != 0 {Side::WHITE} else {Side::BLACK};
             let piece_type = position.pieces[side.0].get_piece_type_at_square(square);
             if piece_type.is_none(){

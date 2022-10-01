@@ -1,6 +1,4 @@
-use std::ops::Shr;
-
-use crate::{types::*, display::print_bitboard};
+use crate::{types::*};
 
 //SQUARES
 pub const DARK_SQUARES: Bitboard = 0xAA55AA55AA55AA55;
@@ -47,25 +45,26 @@ pub trait BitboardMethods {
     fn unset_bit(&self, square: Square) -> Bitboard;
     fn pop_lsb(&mut self) -> Bitboard;
     fn to_square(&self) -> Square;
-    fn from_square(square: Square) -> Bitboard;
     fn get_squares(&self) -> Vec<Square>;
 }
 
 pub trait BitboardConstants {
     const EMPTY: Bitboard;
+    const FULL: Bitboard;
 }
 
 impl BitboardConstants for Bitboard {
     const EMPTY: Bitboard = 0;
+    const FULL: Bitboard = 0xFFFFFFFFFFFFFFFF;
 }
 
 impl BitboardMethods for Bitboard{
     fn set_bit(&self, square: Square) -> Bitboard {
-        return self | Bitboard::from_square(square);
+        return self | square.to_bitboard();
     }
 
     fn unset_bit(&self, square: Square) -> Bitboard {
-        return self & !Bitboard::from_square(square);
+        return self & !square.to_bitboard();
     }
 
     fn pop_lsb(&mut self) -> Bitboard {
@@ -77,10 +76,6 @@ impl BitboardMethods for Bitboard{
 
     fn to_square(&self) -> Square {
         return self.trailing_zeros() as Square;
-    }
-
-    fn from_square(square: Square) -> Bitboard {
-        return 1_u64 << square as u8;
     }
 
     fn get_squares(&self) -> Vec<Square> {

@@ -1,5 +1,5 @@
 use core::panic;
-use std::{collections::HashMap, fmt::{Display, Formatter, Result}};
+use std::{fmt::{Display, Formatter, Result}};
 
 use crate::{
     bitboard::*, 
@@ -15,16 +15,13 @@ use crate::{
         DIRECTIONAL_MAP_RANK,
         DIRECTIONAL_MAP_DD, 
         DIRECTIONAL_MAP_DA, get_ray_between_squares, get_pawn_moves, 
-        }, 
-    masks::{
-        get_file_mask, 
-        get_rank_mask
-    }, display::print_bitboard
+        }
     };
 
 pub struct PositionEvaluation{
     pub moves: Vec<Move>,
     pub game_state: GameState,
+    pub state_note: Option<String>,
     pub score: Option<i32>
 }
 
@@ -44,11 +41,68 @@ const PIECE_VALUES: [i32; 6] = [
 pub type SidePieces = [Bitboard; 6];
 
 pub trait SidePiecesMethods{
+    fn new() -> SidePieces;
+    fn new_game(side: Side) -> SidePieces;
     fn occupancy(&self) -> Bitboard;
     fn get_piece_type_at_square(&self, square: Square) -> Option<Piece>;
 }
 
 impl SidePiecesMethods for SidePieces{
+    fn new () -> SidePieces{
+        return [0; 6];
+    }
+
+    fn new_game(side: Side) -> SidePieces{
+        let mut pieces: [Bitboard; 6]= [0; 6];
+    
+        for i in 0..6{
+            if i == PAWN{
+                pieces[i] = match side{
+                    Side::WHITE => 0xFF00,
+                    Side::BLACK => 0xFF000000000000,
+                    _ => panic!("Error: Unexpected value in Side: {}", side)
+                }
+            }
+            else if i == KNIGHT{
+                pieces[i] = match side{
+                    Side::WHITE => 0x42,
+                    Side::BLACK => 0x4200000000000000,
+                    _ => panic!("Error: Unexpected value in Side: {}", side)
+                }
+            }
+            else if i == BISHOP{
+                pieces[i] = match side{
+                    Side::WHITE => 0x24,
+                    Side::BLACK => 0x2400000000000000,
+                    _ => panic!("Error: Unexpected value in Side: {}", side)
+                }
+            }
+            else if i == ROOK{
+                pieces[i] = match side{
+                    Side::WHITE => 0x81,
+                    Side::BLACK => 0x8100000000000000,
+                    _ => panic!("Error: Unexpected value in Side: {}", side)
+                }
+            }
+            else if i == QUEEN{
+                pieces[i] = match side{
+                    Side::WHITE => 0x8,
+                    Side::BLACK => 0x800000000000000,
+                    _ => panic!("Error: Unexpected value in Side: {}", side)
+                }
+            }
+            else if i == KING{
+                pieces[i] = match side{
+                    Side::WHITE => 0x10,
+                    Side::BLACK => 0x1000000000000000,
+                    _ => panic!("Error: Unexpected value in Side: {}", side)
+                }
+            }
+        }
+    
+        return pieces;
+    }
+
     fn occupancy(&self) -> Bitboard{
         let mut occupancy = Bitboard::EMPTY;
         for pieces in self.iter(){
@@ -59,64 +113,16 @@ impl SidePiecesMethods for SidePieces{
 
     fn get_piece_type_at_square(&self, square: Square) -> Option<Piece>{
         for x in 0..6{
-            if self[x] & Bitboard::from_square(square) != 0{
+            if self[x] & square.to_bitboard() != 0{
                 return Some(x);
             }
         }
         return None;
     }
+
 }
 
-fn new_game_pieces(side: Side) -> SidePieces{
-    let mut pieces: [Bitboard; 6]= [0; 6];
 
-    for i in 0..6{
-        if i == PAWN{
-            pieces[i] = match side{
-                Side::WHITE => 0xFF00,
-                Side::BLACK => 0xFF000000000000,
-                _ => panic!("Error: Unexpected value in Side: {}", side)
-            }
-        }
-        else if i == KNIGHT{
-            pieces[i] = match side{
-                Side::WHITE => 0x42,
-                Side::BLACK => 0x4200000000000000,
-                _ => panic!("Error: Unexpected value in Side: {}", side)
-            }
-        }
-        else if i == BISHOP{
-            pieces[i] = match side{
-                Side::WHITE => 0x24,
-                Side::BLACK => 0x2400000000000000,
-                _ => panic!("Error: Unexpected value in Side: {}", side)
-            }
-        }
-        else if i == ROOK{
-            pieces[i] = match side{
-                Side::WHITE => 0x81,
-                Side::BLACK => 0x8100000000000000,
-                _ => panic!("Error: Unexpected value in Side: {}", side)
-            }
-        }
-        else if i == QUEEN{
-            pieces[i] = match side{
-                Side::WHITE => 0x8,
-                Side::BLACK => 0x800000000000000,
-                _ => panic!("Error: Unexpected value in Side: {}", side)
-            }
-        }
-        else if i == KING{
-            pieces[i] = match side{
-                Side::WHITE => 0x10,
-                Side::BLACK => 0x1000000000000000,
-                _ => panic!("Error: Unexpected value in Side: {}", side)
-            }
-        }
-    }
-
-    return pieces;
-}
 
 #[derive(Clone)]
 #[derive(Copy)]
@@ -132,7 +138,7 @@ impl ZobristHasher{
         let mut piece_hashes: [[[u64; 64]; 6]; 2] = [[[0; 64]; 6]; 2];
         let mut castling_hashes: [u64; 16] = [0; 16];
         let mut en_passant_hashes: [u64; 64] = [0; 64];
-        let mut side_to_move_hash: u64 = 0;
+        let side_to_move_hash: u64;
 
         for side in 0..2{
             for piece in 0..6{
@@ -166,7 +172,7 @@ impl ZobristHasher{
         for side in 0..2{
             for piece in 0..6{
                 for square in 0..64{
-                    if position.pieces[side][piece] & Bitboard::from_square(square) != 0{
+                    if position.pieces[side][piece] & square.to_bitboard() != 0{
                         hash ^= self.piece_hashes[side][piece][square as usize];
                     }
                 }
@@ -236,6 +242,7 @@ impl ZobristMoveStack{
     }
 }
 
+#[derive(Debug)]
 #[derive(Copy)]
 #[derive(Clone)]
 pub struct Castling {
@@ -263,8 +270,6 @@ pub struct SideAttacks{
     pub rays_dd: Bitboard,
     pub rays_da: Bitboard,
 }
-
-
 
 pub trait SideAttackMethods{
     fn all(self) -> Bitboard;
@@ -297,6 +302,15 @@ impl AbsolutePinMethods for AbsolutePins{
 
 impl Castling {
     pub fn new() -> Castling {
+        Castling {
+            white_king_side: false,
+            white_queen_side: false,
+            black_king_side: false,
+            black_queen_side: false,
+        }
+    }
+
+    pub fn new_game() -> Castling {
         Castling {
             white_king_side: true,
             white_queen_side: true,
@@ -342,6 +356,32 @@ pub struct Move{
     pub en_passant: Option<Square>,
 }
 
+impl Move{
+    pub fn get_tstring(&self) -> String{
+        let mut tstring: String = String::new();
+
+        if self.translation.is_some(){
+            let promotion = if self.promotion.is_some(){
+                match self.promotion.unwrap(){
+                    KNIGHT => "n",
+                    BISHOP => "b",
+                    ROOK => "r",
+                    QUEEN => "q",
+                    _ => panic!("Invalid promotion piece: {}", self.promotion.unwrap())
+                }
+            }
+            else{
+                ""
+            };
+            let from_square: Square = self.translation.as_ref().unwrap().from;
+            let to_square: Square = self.translation.as_ref().unwrap().to;
+            tstring = format!("{}{}{}", from_square.as_string(), to_square.as_string(), promotion);
+        }
+
+        return tstring;
+    }
+}
+
 impl Display for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         if self.translation.is_some(){
@@ -351,7 +391,7 @@ impl Display for Move {
             }
             let from_square: Square = self.translation.as_ref().unwrap().from;
             let to_square: Square = self.translation.as_ref().unwrap().to;
-            write!(f, "{}{}{}", from_square.get_string(), capture_string, to_square.get_string())?;
+            write!(f, "{}{}{}", from_square.as_string(), capture_string, to_square.as_string())?;
         }
         else if self.castling.is_some(){
             if self.castling.unwrap() == KING_SIDE{
@@ -366,7 +406,7 @@ impl Display for Move {
         }
 
         if self.promotion.is_some(){
-            write!(f, "^^{}", self.promotion.unwrap())?;
+            write!(f, "={}", self.promotion.unwrap().to_notation())?;
         }
 
         return Ok(());
@@ -389,11 +429,24 @@ pub struct Position{
 impl Position{
 
     pub fn new() -> Position{
-        let pieces = [new_game_pieces(Side::WHITE), new_game_pieces(Side::BLACK)];
+        Position{
+            pieces: [SidePieces::new(), SidePieces::new()],
+            halfmove_clock: 0,
+            fullmove_number: 1,
+            side_to_move: Side::WHITE,
+            castling_rights: Castling::new(),
+            en_passant_square: None,
+            hasher: ZobristHasher::new(),
+            zobrist_stack: ZobristMoveStack::new(),
+        }
+    }
+
+    pub fn new_game() -> Position{
+        let pieces = [SidePieces::new_game(Side::WHITE), SidePieces::new_game(Side::BLACK)];
         let halfmove_clock = 0;
         let fullmove_number = 1;
         let side_to_move = Side::WHITE;
-        let castling_rights = Castling::new();
+        let castling_rights = Castling::new_game();
         let en_passant_square: Option<Square> = None;
         let hasher = ZobristHasher::new();
         let zobrist_stack = ZobristMoveStack::new();
@@ -410,23 +463,169 @@ impl Position{
         }
     }
 
-    fn get_occupancy(self, side: Option<Side>) -> Bitboard{
-        let mut occupancy: Bitboard = 0;
+    pub fn piece_at(&self, square: Square) -> Option<(Piece, Side)>{
+        let square_bb = square.to_bitboard();
+        let white_pieces = self.pieces[Side::WHITE.0].occupancy();
+        let black_pieces = self.pieces[Side::BLACK.0].occupancy();
 
-        if side.is_none() {
-            for i in 0..2{
-                for j in 0..6{
-                    occupancy |= self.pieces[i][j];
+        if square_bb & white_pieces != 0{
+            for piece in 0..6{
+                if square_bb & self.pieces[Side::WHITE.0][piece] != 0{
+                    return Some((piece, Side::WHITE));
+                }
+            }
+        }
+        else if square_bb & black_pieces != 0{
+            for piece in 0..6{
+                if square_bb & self.pieces[Side::WHITE.0][piece] != 0{
+                    return Some((piece, Side::BLACK));
                 }
             }
         }
         else{
-            for i in 0..6{
-                occupancy |= self.pieces[side.as_ref().unwrap().0][i as usize];
+            return None;
+        }
+
+        return None;
+    }
+
+    //parse a FEN string into a position
+    pub fn from_fen(fen: &str) -> Position{
+        let mut position = Position::new();
+
+        //split the FEN string into its components
+        let fen_split: Vec<&str> = fen.split(" ").collect();
+        
+        //get the piece placement
+        let piece_placement: Vec<&str> = fen_split[0].split("/").collect();
+
+        for (rank, rank_string) in piece_placement.iter().enumerate(){
+            let mut file: usize = 0;
+            for c in rank_string.chars(){
+                if c.is_digit(10){
+                    file += c.to_digit(10).unwrap() as usize;
+                }
+                else{
+                    let piece_and_side = Piece::from_char_board(c);
+                    if piece_and_side != None{
+                        let piece = piece_and_side.unwrap().0;
+
+                        let side = piece_and_side.unwrap().1;
+                        let square = Square::from_rank_and_file(7-rank, file);
+
+                        position.pieces[side.0][piece as usize] |= square.to_bitboard();
+                        file += 1;
+                    }
+                }
             }
         }
+
+        //get the side to move
+        position.side_to_move = match fen_split[1]{
+            "w" => Side::WHITE,
+            "b" => Side::BLACK,
+            _ => panic!("Invalid side to move in FEN string")
+        };
+
+        //match the castling rights string
+        for c in fen_split[2].chars(){
+            match c{
+                'K' => position.castling_rights.white_king_side = true,
+                'Q' => position.castling_rights.white_queen_side = true,
+                'k' => position.castling_rights.black_king_side = true,
+                'q' => position.castling_rights.black_queen_side = true,
+                '-' => break,
+                _ => panic!("Invalid castling rights in FEN string")
+            }
+        }
+
+        //get the en passant square
+        position.en_passant_square = match fen_split[3]{
+            "-" => None,
+            _ => Some(Square::from_string(fen_split[3]))
+        };
         
-        return occupancy;
+        //get the halfmove clock
+        position.halfmove_clock = fen_split[4].parse::<u32>().unwrap();
+
+        //get the fullmove number
+        position.fullmove_number = fen_split[5].parse::<u32>().unwrap();     
+
+
+        return position
+    }
+
+    //get fen string of the position
+    pub fn to_fen(&self) -> String{
+        let mut fen_string: String = String::new();
+
+        //get the piece placement
+        for rank in (0..8).rev(){
+            let mut empty_squares: u32 = 0;
+            for file in 0..8{
+                let square = Square::from_rank_and_file(rank, file);
+                let piece_info = self.piece_at(square);
+                if piece_info.is_some(){
+                    if empty_squares > 0{
+                        fen_string.push_str(&empty_squares.to_string());
+                        empty_squares = 0;
+                    }
+                    let piece = piece_info.unwrap().0;
+                    let side = piece_info.unwrap().1;
+                    fen_string.push(piece.to_char_board(side));
+                }
+                else{
+                    empty_squares += 1;
+                }
+            }
+            if empty_squares > 0{
+                fen_string.push_str(&empty_squares.to_string());
+            }
+            if rank > 0{
+                fen_string.push('/');
+            }
+        }
+
+        //get the side to move
+        fen_string.push(' ');
+        fen_string.push(self.side_to_move.to_char());
+
+        //get the castling rights
+        fen_string.push(' ');
+        if self.castling_rights.white_king_side{
+            fen_string.push('K');
+        }
+        if self.castling_rights.white_queen_side{
+            fen_string.push('Q');
+        }
+        if self.castling_rights.black_king_side{
+            fen_string.push('k');
+        }
+        if self.castling_rights.black_queen_side{
+            fen_string.push('q');
+        }
+        if !self.castling_rights.white_king_side && !self.castling_rights.white_queen_side && !self.castling_rights.black_king_side && !self.castling_rights.black_queen_side{
+            fen_string.push('-');
+        }
+
+        //get the en passant square
+        fen_string.push(' ');
+        if self.en_passant_square.is_some(){
+            fen_string.push_str(&self.en_passant_square.unwrap().as_string());
+        }
+        else{
+            fen_string.push('-');
+        }
+
+        //get the halfmove clock
+        fen_string.push(' ');
+        fen_string.push_str(&self.halfmove_clock.to_string());
+
+        //get the fullmove number
+        fen_string.push(' ');
+        fen_string.push_str(&self.fullmove_number.to_string());
+
+        return fen_string;
     }
 
     fn get_side_attacks(self, side: Side, occupancy: Bitboard) -> SideAttacks{
@@ -488,8 +687,8 @@ impl Position{
                             });
                         }
                     }
-                    rays_dd = bishop_attacks & DIRECTIONAL_MAP_DD[square as usize];
-                    rays_da = bishop_attacks & DIRECTIONAL_MAP_DA[square as usize];
+                    rays_dd |= bishop_attacks & DIRECTIONAL_MAP_DD[square as usize];
+                    rays_da |= bishop_attacks & DIRECTIONAL_MAP_DA[square as usize];
                 }
                 else if i == ROOK{
                     let rook_attacks = get_rook_attacks(square, occupancy);
@@ -504,8 +703,8 @@ impl Position{
                             });
                         }
                     }
-                    rays_h = rook_attacks & DIRECTIONAL_MAP_FILE[square as usize];
-                    rays_v = rook_attacks & DIRECTIONAL_MAP_RANK[square as usize];
+                    rays_h |= rook_attacks & DIRECTIONAL_MAP_RANK[square as usize];
+                    rays_v |= rook_attacks & DIRECTIONAL_MAP_FILE[square as usize];
                 }
                 else if i == QUEEN{
                     let queen_attacks = get_queen_attacks(square, occupancy);
@@ -520,10 +719,10 @@ impl Position{
                             });
                         }
                     }
-                    rays_h = queen_attacks & DIRECTIONAL_MAP_FILE[square as usize];
-                    rays_v = queen_attacks & DIRECTIONAL_MAP_RANK[square as usize];
-                    rays_dd = queen_attacks & DIRECTIONAL_MAP_DD[square as usize];
-                    rays_da = queen_attacks & DIRECTIONAL_MAP_DA[square as usize];
+                    rays_h |= queen_attacks & DIRECTIONAL_MAP_RANK[square as usize];
+                    rays_v |= queen_attacks & DIRECTIONAL_MAP_FILE[square as usize];
+                    rays_dd |= queen_attacks & DIRECTIONAL_MAP_DD[square as usize];
+                    rays_da |= queen_attacks & DIRECTIONAL_MAP_DA[square as usize];
                 }
                 else if i == KING{
                     let king_attacks = get_king_attacks(square);
@@ -543,7 +742,7 @@ impl Position{
         };
     }
 
-    fn get_absolute_pins_for_side(self, enemy_attacks: SideAttacks, defender_occupancy: Bitboard, defender_king_square: Square) -> AbsolutePins{
+    fn get_absolute_pins_for_side(self, enemy_attacks: SideAttacks, occupancy: Bitboard, defender_occupancy: Bitboard, defender_king_square: Square) -> AbsolutePins{
         let mut pins_h: Bitboard = 0;
         let mut pins_v: Bitboard = 0;
         let mut pins_dd: Bitboard = 0;
@@ -551,7 +750,7 @@ impl Position{
 
         //check attacks horizontal
         let relevant_rank = DIRECTIONAL_MAP_RANK[defender_king_square as usize];
-        let king_sees = get_rook_attacks(defender_king_square, defender_occupancy) & relevant_rank & defender_occupancy;
+        let king_sees = get_rook_attacks(defender_king_square, occupancy) & relevant_rank & defender_occupancy;
         let enemy_sees = enemy_attacks.rays_h & relevant_rank & defender_occupancy;
         if king_sees & enemy_sees != 0{
             pins_h |= king_sees & enemy_sees;
@@ -559,7 +758,7 @@ impl Position{
 
         //check attacks vertical
         let relevant_file = DIRECTIONAL_MAP_FILE[defender_king_square as usize];
-        let king_sees = get_rook_attacks(defender_king_square, defender_occupancy) & relevant_file & defender_occupancy;
+        let king_sees = get_rook_attacks(defender_king_square, occupancy) & relevant_file & defender_occupancy;
         let enemy_sees = enemy_attacks.rays_v & relevant_file & defender_occupancy;
         if king_sees & enemy_sees != 0{
             pins_v |= king_sees & enemy_sees;
@@ -567,7 +766,7 @@ impl Position{
 
         //check attacks diagonal down
         let relevant_dd = DIRECTIONAL_MAP_DD[defender_king_square as usize];
-        let king_sees = get_bishop_attacks(defender_king_square, defender_occupancy) & relevant_dd & defender_occupancy;
+        let king_sees = get_bishop_attacks(defender_king_square, occupancy) & relevant_dd & defender_occupancy;
         let enemy_sees = enemy_attacks.rays_dd & relevant_dd & defender_occupancy;
         if king_sees & enemy_sees != 0{
             pins_dd |= king_sees & enemy_sees;
@@ -575,7 +774,7 @@ impl Position{
 
         //check attacks diagonal up
         let relevant_da = DIRECTIONAL_MAP_DA[defender_king_square as usize];
-        let king_sees = get_bishop_attacks(defender_king_square, defender_occupancy) & relevant_da & defender_occupancy;
+        let king_sees = get_bishop_attacks(defender_king_square, occupancy) & relevant_da & defender_occupancy;
         let enemy_sees = enemy_attacks.rays_da & relevant_da & defender_occupancy;
         if king_sees & enemy_sees != 0{
             pins_da |= king_sees & enemy_sees;
@@ -611,106 +810,94 @@ impl Position{
         return white_score - black_score;
     }
 
-    fn check_draw(&mut self) -> bool{
+    fn check_draw(&mut self) -> (bool, String){
 
         //check for 3-fold repetition
         let current_position_hash = self.hasher.hash_position(self);
         self.zobrist_stack.add(current_position_hash);
         let repetitions = self.zobrist_stack.get_repetitions(current_position_hash);
         if repetitions >= 3{
-            return true;
+            return (true, "Three-fold, repetition.".to_string());
         }
 
         //check for 50 move rule
         if self.halfmove_clock >= 100{
-            return true;
+            return (true, "Fifty-move rule.".to_string());
         }
 
         //check for insufficient material
         let mut white_insufficient_material = true;
         let mut black_insufficient_material = true;
 
-        for side in 0..1{
             for piece in 0..6{
-                if piece == PAWN{
-                    let pawn_bb = self.pieces[side][piece];
-                    let num_pawns = pawn_bb.count_ones();
-                    if num_pawns > 0{
-                        if side == 0{
+                if piece != KING{
+                    //check pawns
+                    if piece == PAWN{
+                        if self.pieces[Side::WHITE.0][PAWN] != 0{
                             white_insufficient_material = false;
                         }
-                        else{
+                        if self.pieces[Side::BLACK.0][PAWN] != 0{
                             black_insufficient_material = false;
                         }
                     }
-                }
-                else if piece == KNIGHT{
-                    let knight_bb = self.pieces[side][piece];
-                    let num_knights = knight_bb.count_ones();
-                    if num_knights > 1{
-                        if side == 0{
+                    //check knights
+                    else if piece == KNIGHT{
+                        if self.pieces[Side::WHITE.0][KNIGHT].count_ones() >= 2{
                             white_insufficient_material = false;
                         }
-                        else{
+                        if self.pieces[Side::BLACK.0][KNIGHT].count_ones() >= 2{
                             black_insufficient_material = false;
                         }
                     }
-                }
-                else if piece == BISHOP{
-                    let bishop_bb = self.pieces[side][piece];
-                    let num_bishops = bishop_bb.count_ones();
-                    if num_bishops > 1{
-                        if side == 0{
+                    //check bishops
+                    else if piece == BISHOP{
+                        if self.pieces[Side::WHITE.0][BISHOP].count_ones() >= 2{
                             white_insufficient_material = false;
                         }
-                        else{
+                        if self.pieces[Side::BLACK.0][BISHOP].count_ones() >= 2{
                             black_insufficient_material = false;
                         }
                     }
-                }
-                else if piece == ROOK{
-                    let rook_bb = self.pieces[side][piece];
-                    let num_rooks = rook_bb.count_ones();
-                    if num_rooks > 0{
-                        if side == 0{
+                    //check rooks
+                    else if piece == ROOK{
+                        if self.pieces[Side::WHITE.0][ROOK].count_ones() >= 1{
                             white_insufficient_material = false;
                         }
-                        else{
+                        if self.pieces[Side::BLACK.0][ROOK].count_ones() >= 1{
                             black_insufficient_material = false;
                         }
                     }
-                }
-                else if piece == QUEEN{
-                    let queen_bb = self.pieces[side][piece];
-                    let num_queens = queen_bb.count_ones();
-                    if num_queens > 0{
-                        if side == 0{
+                    //check queens
+                    else if piece == QUEEN{
+                        if self.pieces[Side::WHITE.0][QUEEN].count_ones() >= 1{
                             white_insufficient_material = false;
                         }
-                        else{
+                        if self.pieces[Side::BLACK.0][QUEEN].count_ones() >= 1{
                             black_insufficient_material = false;
                         }
                     }
                 }
             }
 
-        }
+        
 
         if white_insufficient_material && black_insufficient_material{
-            return true;
+            return (true, "Insufficient material.".to_string());
         }
 
-        return false;
+        return (false, "".to_string());
     }
 
-    pub fn evaluate(mut self, debug: Option<bool>) -> PositionEvaluation{
+    pub fn evaluate(mut self) -> PositionEvaluation{
         let mut moves: Vec<Move> = Vec::new();
 
         //just return if it's a draw
-        if self.check_draw(){
+        let draw_check = self.check_draw();
+        if draw_check.0{
             return PositionEvaluation{
                 moves,
                 game_state: GameState::DRAW,
+                state_note: Some(draw_check.1),
                 score: Some(SCORE_DRAW)
             }
         }
@@ -726,25 +913,30 @@ impl Position{
 
         let our_king: Bitboard = self.pieces[us.0][KING];
         let our_king_square = our_king.to_square();
+
+        let occupancy_without_our_king = occupancy & !our_king;
+
         let their_attacks = self.get_side_attacks(them, occupancy);
-        let our_pins = self.get_absolute_pins_for_side(their_attacks, our_occupancy, our_king.to_square());
-        
+        let their_attacks_without_our_king = self.get_side_attacks(them, occupancy_without_our_king);
+        let our_pins = self.get_absolute_pins_for_side(their_attacks, occupancy, our_occupancy, our_king.to_square());
+
         let mut score = Some(self.get_raw_score());
 
         //make sure king is not in check
         if their_attacks.check.is_none(){
-            if(debug == Some(true)){
-                println!("No check");
-            }
             //generate castling moves
             if us == Side::WHITE{
                 if self.castling_rights.white_king_side{
                     //check that the squares between the king and the rook are empty
-                    if our_occupancy & WHITE_KINGSIDE_CASTLE == 0{
+                    if occupancy & WHITE_KINGSIDE_CASTLE == 0{
                         //check that the squares between the king and the rook are not attacked
                         if their_attacks.all() & WHITE_KINGSIDE_CASTLE == 0{
+                            let destination_square = Square::G1;
                             moves.push(Move{
-                                translation: None,
+                                translation: Some(Translation{
+                                    from: our_king_square,
+                                    to: destination_square,
+                                }),
                                 promotion: None,
                                 capture: None,
                                 castling: Some(KING_SIDE),
@@ -755,11 +947,16 @@ impl Position{
                 }
                 if self.castling_rights.white_queen_side{
                     //check that the squares between the king and the rook are empty
-                    if our_occupancy & WHITE_QUEENSIDE_CASTLE == 0{
+                    if occupancy & WHITE_QUEENSIDE_CASTLE == 0{
+                        let white_queenside_squares = Square::C1.to_bitboard() | Square::D1.to_bitboard();
                         //check that the squares between the king and the rook are not attacked
-                        if their_attacks.all() & WHITE_QUEENSIDE_CASTLE == 0{
+                        if their_attacks.all() & white_queenside_squares == 0{
+                            let destination_square = Square::C1;
                             moves.push(Move{
-                                translation: None,
+                                translation: Some(Translation{
+                                    from: our_king_square,
+                                    to: destination_square,
+                                }),
                                 promotion: None,
                                 capture: None,
                                 castling: Some(QUEEN_SIDE),
@@ -772,11 +969,17 @@ impl Position{
             else{
                 if self.castling_rights.black_king_side{
                     //check that the squares between the king and the rook are empty
-                    if our_occupancy & BLACK_KINGSIDE_CASTLE == 0{
+                    if occupancy & BLACK_KINGSIDE_CASTLE == 0{
+
                         //check that the squares between the king and the rook are not attacked
                         if their_attacks.all() & BLACK_KINGSIDE_CASTLE == 0{
+                            let destination_square = Square::G8;
+                            
                             moves.push(Move{
-                                translation: None,
+                                translation: Some(Translation{
+                                    from: our_king_square,
+                                    to: destination_square,
+                                }),
                                 promotion: None,
                                 capture: None,
                                 castling: Some(KING_SIDE),
@@ -787,11 +990,17 @@ impl Position{
                 }
                 if self.castling_rights.black_queen_side{
                     //check that the squares between the king and the rook are empty
-                    if our_occupancy & BLACK_QUEENSIDE_CASTLE == 0{
+
+                    if occupancy & BLACK_QUEENSIDE_CASTLE == 0{
+                        let black_queenside_squares = Square::C8.to_bitboard() | Square::D8.to_bitboard();
                         //check that the squares between the king and the rook are not attacked
-                        if their_attacks.all() & BLACK_QUEENSIDE_CASTLE == 0{
+                        if their_attacks.all() & black_queenside_squares == 0{
+                            let destination_square = Square::C8;
                             moves.push(Move{
-                                translation: None,
+                                translation: Some(Translation{
+                                    from: our_king_square,
+                                    to: destination_square,
+                                }),
                                 promotion: None,
                                 capture: None,
                                 castling: Some(QUEEN_SIDE),
@@ -806,148 +1015,47 @@ impl Position{
             let pawn_bb = self.pieces[us.0][PAWN];
             let pawn_squares = pawn_bb.get_squares();
             for square in pawn_squares{
-                let square_bb = Bitboard::from_square(square);
+                let square_bb = square.to_bitboard();
                 //if pawn is not pinned horizontally or diagonally, generate pawn moves
                 if our_pins.pins_h & square_bb == 0 && our_pins.pins_dd & square_bb == 0 && our_pins.pins_da & square_bb == 0{
                     //generate pawn moves
                     let pawn_moves = get_pawn_moves(us, square, occupancy);
                     let destination_squares = pawn_moves.get_squares();
+
                     for destination_square in destination_squares{
-                        let destination_square_bb = Bitboard::from_square(destination_square);
-                        if us == Side::WHITE && destination_square_bb & RANK_8BB != 0{
-                            //generate white promotion moves
-                            moves.push(Move{
-                                translation: Some(Translation{
-                                    from: square,
-                                    to: destination_square,
-                                }),
-                                promotion: Some(QUEEN),
-                                capture: None,
-                                castling: None,
-                                en_passant: None, 
-                            });
-                            moves.push(Move{
-                                translation: Some(Translation{
-                                    from: square,
-                                    to: destination_square,
-                                }),
-                                promotion: Some(ROOK),
-                                capture: None,
-                                castling: None,
-                                en_passant: None, 
-                            });
-                            moves.push(Move{
-                                translation: Some(Translation{
-                                    from: square,
-                                    to: destination_square,
-                                }),
-                                promotion: Some(BISHOP),
-                                capture: None,
-                                castling: None,
-                                en_passant: None, 
-                            });
-                            moves.push(Move{
-                                translation: Some(Translation{
-                                    from: square,
-                                    to: destination_square,
-                                }),
-                                promotion: Some(KNIGHT),
-                                capture: None,
-                                castling: None,
-                                en_passant: None, 
-                            });
-                        }
-                        else if us == Side::BLACK && destination_square_bb & RANK_1BB != 0{
-                            //generate black promotion moves
-                            moves.push(Move{
-                                translation: Some(Translation{
-                                    from: square,
-                                    to: destination_square,
-                                }),
-                                promotion: Some(QUEEN),
-                                capture: None,
-                                castling: None,
-                                en_passant: None, 
-                            });
-                            moves.push(Move{
-                                translation: Some(Translation{
-                                    from: square,
-                                    to: destination_square,
-                                }),
-                                promotion: Some(ROOK),
-                                capture: None,
-                                castling: None,
-                                en_passant: None, 
-                            });
-                            moves.push(Move{
-                                translation: Some(Translation{
-                                    from: square,
-                                    to: destination_square,
-                                }),
-                                promotion: Some(BISHOP),
-                                capture: None,
-                                castling: None,
-                                en_passant: None, 
-                            });
-                            moves.push(Move{
-                                translation: Some(Translation{
-                                    from: square,
-                                    to: destination_square,
-                                }),
-                                promotion: Some(KNIGHT),
-                                capture: None,
-                                castling: None,
-                                en_passant: None, 
-                            });
-                        }
-                        else{
-                            //check if destination_square two squares back is identical to square
-                            let two_sq_back: u8 = if us == Side::WHITE{
-                                destination_square - 16
-                            }
-                            else{
-                                destination_square + 16
-                            };
-
-                            let mut added_as_en_passant = false;
-
-                            if square == two_sq_back{
-                                let destination_square_bb = Bitboard::from_square(destination_square);
-                                let sides_of_destination_square = destination_square_bb << 1 | destination_square_bb >> 1;
-                                
-                                if sides_of_destination_square & self.pieces[them.0][PAWN] != 0{
-                                    moves.push(Move{
-                                        translation: Some(Translation{
-                                            from: square,
-                                            to: destination_square,
-                                        }),
-                                        promotion: None,
-                                        capture: None,
-                                        castling: None,
-                                        en_passant: Some(destination_square), 
-                                    });
-                                    added_as_en_passant = true;
-                                }
-                            }
-
-                            //generate non-promotion moves
-                            if !added_as_en_passant{
+                        let destination_square_bb = destination_square.to_bitboard();
+                        if us == Side::WHITE && destination_square_bb & RANK_8BB != 0 || us == Side::BLACK && destination_square_bb & RANK_1BB != 0{
+                            //generate promotion moves
+                            for promotion_piece in [QUEEN, ROOK, BISHOP, KNIGHT].iter(){
                                 moves.push(Move{
                                     translation: Some(Translation{
                                         from: square,
                                         to: destination_square,
                                     }),
-                                    promotion: None,
+                                    promotion: Some(*promotion_piece),
                                     capture: None,
                                     castling: None,
                                     en_passant: None, 
                                 });
                             }
                         }
+                        else{
+                            //generate non-promotion moves
+                            moves.push(Move{
+                                translation: Some(Translation{
+                                    from: square,
+                                    to: destination_square,
+                                }),
+                                promotion: None,
+                                capture: None,
+                                castling: None,
+                                en_passant: None, 
+                            });
+                        }
                     }
                 }
                 //if pawn is not pinned horizontally or vertically, generate pawn captures
-                else if our_pins.pins_h & square_bb == 0 && our_pins.pins_v & square_bb == 0{
+                if our_pins.pins_h & square_bb == 0 && our_pins.pins_v & square_bb == 0{
                     let pawn_attacks = get_pawn_attacks(us, square);
                     
                     //generate normal pawn captures first
@@ -955,93 +1063,22 @@ impl Position{
                     let pawn_capture_squares = pawn_captures.get_squares();
 
                     for pawn_capture_square in pawn_capture_squares{
-                        let pawn_capture_square_bb = Bitboard::from_square(pawn_capture_square);
+                        let pawn_capture_square_bb = pawn_capture_square.to_bitboard();
                         
-                        if us == Side::WHITE && pawn_capture_square_bb & RANK_8BB != 0{
-                            //generate white promotion captures
-                            moves.push(Move{
-                                translation: Some(Translation{
-                                    from: square,
-                                    to: pawn_capture_square,
-                                }),
-                                promotion: Some(QUEEN),
-                                capture: self.pieces[them.0].get_piece_type_at_square(square),
-                                castling: None,
-                                en_passant: None, 
-                            });
-                            moves.push(Move{
-                                translation: Some(Translation{
-                                    from: square,
-                                    to: pawn_capture_square,
-                                }),
-                                promotion: Some(ROOK),
-                                capture: self.pieces[them.0].get_piece_type_at_square(square),
-                                castling: None,
-                                en_passant: None, 
-                            });
-                            moves.push(Move{
-                                translation: Some(Translation{
-                                    from: square,
-                                    to: pawn_capture_square,
-                                }),
-                                promotion: Some(BISHOP),
-                                capture: self.pieces[them.0].get_piece_type_at_square(square),
-                                castling: None,
-                                en_passant: None, 
-                            });
-                            moves.push(Move{
-                                translation: Some(Translation{
-                                    from: square,
-                                    to: pawn_capture_square,
-                                }),
-                                promotion: Some(KNIGHT),
-                                capture: self.pieces[them.0].get_piece_type_at_square(square),
-                                castling: None,
-                                en_passant: None, 
-                            });
-                        }
-                        else if us == Side::BLACK && pawn_capture_square_bb & RANK_1BB != 0{
-                            //generate black promotion captures
-                            moves.push(Move{
-                                translation: Some(Translation{
-                                    from: square,
-                                    to: pawn_capture_square,
-                                }),
-                                promotion: Some(QUEEN),
-                                capture: self.pieces[them.0].get_piece_type_at_square(square),
-                                castling: None,
-                                en_passant: None, 
-                            });
-                            moves.push(Move{
-                                translation: Some(Translation{
-                                    from: square,
-                                    to: pawn_capture_square,
-                                }),
-                                promotion: Some(ROOK),
-                                capture: self.pieces[them.0].get_piece_type_at_square(square),
-                                castling: None,
-                                en_passant: None, 
-                            });
-                            moves.push(Move{
-                                translation: Some(Translation{
-                                    from: square,
-                                    to: pawn_capture_square,
-                                }),
-                                promotion: Some(BISHOP),
-                                capture: self.pieces[them.0].get_piece_type_at_square(square),
-                                castling: None,
-                                en_passant: None, 
-                            });
-                            moves.push(Move{
-                                translation: Some(Translation{
-                                    from: square,
-                                    to: pawn_capture_square,
-                                }),
-                                promotion: Some(KNIGHT),
-                                capture: self.pieces[them.0].get_piece_type_at_square(square),
-                                castling: None,
-                                en_passant: None, 
-                            });
+                        if us == Side::WHITE && pawn_capture_square_bb & RANK_8BB != 0 || us == Side::BLACK && pawn_capture_square_bb & RANK_1BB != 0{
+                            //generate promotion captures
+                            for promotion_piece in [QUEEN, ROOK, BISHOP, KNIGHT].iter(){
+                                moves.push(Move{
+                                    translation: Some(Translation{
+                                        from: square,
+                                        to: pawn_capture_square,
+                                    }),
+                                    promotion: Some(*promotion_piece),
+                                    capture: self.pieces[them.0].get_piece_type_at_square(square),
+                                    castling: None,
+                                    en_passant: None, 
+                                });
+                            }
                         }
                         else{
                             //generate non-promotion captures
@@ -1057,21 +1094,21 @@ impl Position{
                             });
                         }
                     }
-                    //if pawn is not pinned horizontally or vertically, generate en passant captures if possible
                     if self.en_passant_square.is_some(){
-                        let en_passant_capture_square = if us == Side::WHITE { self.en_passant_square.unwrap() + 8 } else { self.en_passant_square.unwrap() - 8 };
-                        let en_passant_valid_bb = pawn_attacks & Bitboard::from_square(en_passant_capture_square);
+                        //generate en passant captures
+                        let en_passant_square = self.en_passant_square.unwrap();
+                        let en_passant_valid_bb = pawn_attacks & en_passant_square.to_bitboard();
 
                         if en_passant_valid_bb != 0{
                             moves.push(Move{
                                 translation: Some(Translation{
                                     from: square,
-                                    to: en_passant_capture_square,
+                                    to: en_passant_square,
                                 }),
                                 promotion: None,
                                 capture: Some(PAWN),
                                 castling: None,
-                                en_passant: Some(self.en_passant_square.unwrap()),
+                                en_passant: Some(en_passant_square),
                             });
                         }
                     }
@@ -1084,13 +1121,13 @@ impl Position{
 
             for knight in knight_squares{
                 let knight_attacks = get_knight_attacks(knight);
-                let current_knight_bb = Bitboard::from_square(knight);
+                let current_knight_bb = knight.to_bitboard();
                 let valid_knight_attacks = knight_attacks & !our_occupancy;
 
                 //if knight is pinned at all, skip generating knight moves
                 if our_pins.all() & current_knight_bb == 0{
                     for valid_knight_attack in valid_knight_attacks.get_squares(){
-                        let valid_knight_attack_bb = Bitboard::from_square(valid_knight_attack);
+                        let valid_knight_attack_bb = valid_knight_attack.to_bitboard();
                         if valid_knight_attack_bb & their_occupancy != 0{
                             //generate knight captures
                             moves.push(Move{
@@ -1127,7 +1164,7 @@ impl Position{
 
             for bishop_square in bishop_squares{
                 let bishop_attacks = get_bishop_attacks(bishop_square, occupancy) & !our_occupancy;
-                let current_bishop_bb = Bitboard::from_square(bishop_square);
+                let current_bishop_bb = bishop_square.to_bitboard();
 
                 //if bishop is pinned horizontally or vertically, skip generating bishop moves
                 if our_pins.pins_h & current_bishop_bb == 0 && our_pins.pins_v & current_bishop_bb == 0{
@@ -1148,7 +1185,7 @@ impl Position{
                     }
 
                     for valid_bishop_attack in valid_bishop_attacks.get_squares(){
-                        let valid_bishop_attack_bb = Bitboard::from_square(valid_bishop_attack);
+                        let valid_bishop_attack_bb = valid_bishop_attack.to_bitboard();
                         if valid_bishop_attack_bb & their_occupancy != 0{
                             //generate bishop captures
                             moves.push(Move{
@@ -1181,11 +1218,13 @@ impl Position{
 
             //generate rook moves
             let rook_bb = self.pieces[us.0][ROOK];
+
             let rook_squares = rook_bb.get_squares();
 
             for rook_square in rook_squares{
                 let rook_attacks = get_rook_attacks(rook_square, occupancy) & !our_occupancy;
-                let current_rook_bb = Bitboard::from_square(rook_square);
+
+                let current_rook_bb = rook_square.to_bitboard();
 
                 //if rook is pinned diagonally, skip generating rook moves
                 if our_pins.pins_dd & current_rook_bb == 0 && our_pins.pins_da & current_rook_bb == 0{
@@ -1206,7 +1245,8 @@ impl Position{
                     }
 
                     for valid_rook_attack in valid_rook_attacks.get_squares(){
-                        let valid_rook_attack_bb = Bitboard::from_square(valid_rook_attack);
+                        let valid_rook_attack_bb = valid_rook_attack.to_bitboard();
+
                         if valid_rook_attack_bb & their_occupancy != 0{
                             //generate rook captures
                             moves.push(Move{
@@ -1240,7 +1280,7 @@ impl Position{
             //generate queen moves
             let queen_bb = self.pieces[us.0][QUEEN];
             let queen_squares = queen_bb.get_squares();
-            
+
             for queen_square in queen_squares{
                 let queen_attacks = get_queen_attacks(queen_square, occupancy) & !our_occupancy;
                 let valid_queen_attacks: Bitboard;
@@ -1267,7 +1307,8 @@ impl Position{
                 }
 
                 for valid_queen_attack in valid_queen_attacks.get_squares(){
-                    let valid_queen_attack_bb = Bitboard::from_square(valid_queen_attack);
+                    let valid_queen_attack_bb = valid_queen_attack.to_bitboard();
+
                     if valid_queen_attack_bb & their_occupancy != 0{
                         //generate queen captures
                         moves.push(Move{
@@ -1296,51 +1337,73 @@ impl Position{
                     }
                 }
             }
+            
+            //generate king moves
+            let king_bb = self.pieces[us.0][KING];
+            let king_square = king_bb.get_squares()[0];
+
+            let king_attacks = get_king_attacks(king_square) & !our_occupancy;
+            let valid_king_attacks: Bitboard;
+            valid_king_attacks = king_attacks & !their_attacks_without_our_king.all();
+
+            for valid_king_attack in valid_king_attacks.get_squares(){
+                let valid_king_attack_bb = valid_king_attack.to_bitboard();
+                if valid_king_attack_bb & their_occupancy != 0{
+                    //generate king captures
+                    moves.push(Move{
+                        translation: Some(Translation{
+                            from: king_square,
+                            to: valid_king_attack,
+                        }),
+                        promotion: None,
+                        capture: self.pieces[them.0].get_piece_type_at_square(valid_king_attack),
+                        castling: None,
+                        en_passant: None, 
+                    });
+                }
+                else{
+                    //generate king moves
+                    moves.push(Move{
+                        translation: Some(Translation{
+                            from: king_square,
+                            to: valid_king_attack,
+                        }),
+                        promotion: None,
+                        capture: None,
+                        castling: None,
+                        en_passant: None, 
+                    });
+                }
+            }
+            if moves.len() == 0{
+                let note = format!("No moves found for {}", us);
+                return PositionEvaluation{
+                    game_state: GameState::DRAW,
+                    state_note: Some(note),
+                    moves,
+                    score
+                }
+            }
         }
         else{
-            let our_attacks_all = self.get_side_attacks(us, occupancy).all();
-
-            //in check 
-            if(debug == Some(true)){
-                println!("In Check");
-                println!("Side to Move: {}", us);
-                println!("Their attacks: ");
-                print_bitboard(their_attacks.all());
-                println!("Our attacks: ");
-                print_bitboard(our_attacks_all);
-            }
-
-            let occupancy_without_our_king = occupancy & !our_king;
-            let their_attacks_without_our_king = self.get_side_attacks(them, occupancy_without_our_king);
+            game_state = GameState::CHECK;
 
             //double check, only king must move
             if their_attacks.double_check{
-                if(debug == Some(true)){
-                    println!("Double Check");
-                }
                 let available_squares: Bitboard = (get_king_attacks(our_king_square) & !our_occupancy) & !their_attacks_without_our_king.all();
                 //checkmate?
                 if available_squares == 0{
-                    if us == Side::WHITE{
-                        return PositionEvaluation{
-                            game_state: GameState::CHECKMATE,
-                            moves,
-                            score: Some(SCORE_BLACK_WINS)
-                        };
+                    score = if us == Side::WHITE { Some(SCORE_BLACK_WINS) } else { Some(SCORE_WHITE_WINS) };
+                    return PositionEvaluation{
+                        game_state: GameState::CHECKMATE,
+                        state_note: Some("No moves after check.".to_string()),
+                        moves,
+                        score
                     }
-                    else{
-                        return PositionEvaluation{
-                            game_state: GameState::CHECKMATE,
-                            moves,
-                            score: Some(SCORE_WHITE_WINS)
-                        };
-                    }
-
                 }
                 //we can still play for one more move at least
-                game_state = GameState::CHECK;
                 for square in available_squares.get_squares(){
-                    let square_bb = Bitboard::from(square);
+                    let square_bb = square.to_bitboard();
                     if square_bb & their_occupancy != 0{
                         //find which piece the king is attacking
                         let mut piece = 0;
@@ -1376,429 +1439,286 @@ impl Position{
             else{
                 let checker = their_attacks.check.unwrap();
                 let checker_square = checker.square;
-                let checker_square_bb = Bitboard::from(checker_square);
+                let checker_square_bb = checker_square.to_bitboard();
                 let checker_piece = checker.piece;
 
-                let between_bb = get_ray_between_squares(our_king_square, checker_square);
-                //Make sure we can even capture or block the checker
-                if our_attacks_all & checker_square_bb != 0 || our_attacks_all & between_bb != 0 {
-                    for piece in 0..6{
-                        let piece_bb = self.pieces[us.0][piece];
-                        for square in piece_bb.get_squares(){
-                            let square_bb = Bitboard::from(square);
-                            if piece == PAWN{
-                                let pawn_attacks = get_pawn_attacks(us, square);
-                                //make sure pawn can capture the checker
-                                if pawn_attacks & checker_square_bb != 0{
-                                    //if the pawn is pinned vertically or horizontally, it can't capture the checker
-                                    if our_pins.pins_h & square_bb == 0 && our_pins.pins_v & square_bb == 0{
-                                        //if the pawn will promote, we need to generate all promotion moves
-                                        if (us == Side::WHITE && checker_square_bb & RANK_8BB == 0) || (us == Side::BLACK && checker_square_bb & RANK_1BB == 0){
-                                            moves.push(Move{
-                                                translation: Some(Translation { from: square, to: checker_square }),
-                                                promotion: Some(QUEEN),
-                                                capture: Some(checker_piece),
-                                                castling:None,
-                                                en_passant: None, 
-                                            });
-                                            moves.push(Move{
-                                                translation: Some(Translation { from: square, to: checker_square }),
-                                                promotion: Some(ROOK),
-                                                capture: Some(checker_piece),
-                                                castling:None,
-                                                en_passant: None, 
-                                            });
-                                            moves.push(Move{
-                                                translation: Some(Translation { from: square, to: checker_square }),
-                                                promotion: Some(BISHOP),
-                                                capture: Some(checker_piece),
-                                                castling:None,
-                                                en_passant: None, 
-                                            });
-                                            moves.push(Move{
-                                                translation: Some(Translation { from: square, to: checker_square }),
-                                                promotion: Some(KNIGHT),
-                                                capture: Some(checker_piece),
-                                                castling:None,
-                                                en_passant: None, 
-                                            });
-                                        }
-                                        else{
-                                            moves.push(Move{
-                                                translation: Some(Translation { from: square, to: checker_square }),
-                                                promotion: None,
-                                                capture: Some(checker_piece),
-                                                castling:None,
-                                                en_passant: None, 
-                                            });
-                                        }
-                                    }
-                                }
-                                if checker_piece > KNIGHT { 
-                                    //could the pawn move to the square between the king and the checker?
-                                    let pawn_moves = get_pawn_moves(us, square, occupancy);
-                                    let valid_pawn_moves = pawn_moves & between_bb;
-                                    if valid_pawn_moves != 0{
-                                        //if the pawn is pinned vertically or horizontally, it can't move to the square between the king and the checker
-                                        if our_pins.pins_h & square_bb == 0 && our_pins.pins_v & square_bb == 0{
-                                            //if the pawn will promote, we need to generate all promotion moves
-                                            if (us == Side::WHITE && valid_pawn_moves & RANK_8BB == 0) || (us == Side::BLACK && valid_pawn_moves & RANK_1BB == 0){
-                                                moves.push(Move{
-                                                    translation: Some(Translation { from: square, to: valid_pawn_moves.to_square() }),
-                                                    promotion: Some(QUEEN),
-                                                    capture: None,
-                                                    castling:None,
-                                                    en_passant: None, 
-                                                });
-                                                moves.push(Move{
-                                                    translation: Some(Translation { from: square, to: valid_pawn_moves.to_square() }),
-                                                    promotion: Some(ROOK),
-                                                    capture: None,
-                                                    castling:None,
-                                                    en_passant: None, 
-                                                });
-                                                moves.push(Move{
-                                                    translation: Some(Translation { from: square, to: valid_pawn_moves.to_square() }),
-                                                    promotion: Some(BISHOP),
-                                                    capture: None,
-                                                    castling:None,
-                                                    en_passant: None, 
-                                                });
-                                                moves.push(Move{
-                                                    translation: Some(Translation { from: square, to: valid_pawn_moves.to_square() }),
-                                                    promotion: Some(KNIGHT),
-                                                    capture: None,
-                                                    castling:None,
-                                                    en_passant: None, 
-                                                });
-                                            }
-                                            else{
-                                                moves.push(Move{
-                                                    translation: Some(Translation { from: square, to: valid_pawn_moves.to_square() }),
-                                                    promotion: None,
-                                                    capture: None,
-                                                    castling:None,
-                                                    en_passant: None, 
-                                                });
-                                            }
-                                        }
-                                    }
-                                }                                
-                                //check if the pawn can capture the checker en passant
-                                if checker_piece == PAWN && self.en_passant_square.is_some() && self.en_passant_square.unwrap() == checker_square{
-                                    let pawn_attacks = get_pawn_attacks(us, square);
+                let mut slider_squares: Bitboard = Bitboard::EMPTY;
 
-                                    //get the en passant capture square
-                                    let en_passant_capture_square = if us == Side::WHITE { checker_square + 8 } else { checker_square - 8 };
-                                    let en_passant_capture_bb = Bitboard::from(en_passant_capture_square);
+                if checker_piece == BISHOP || checker_piece == ROOK || checker_piece == QUEEN{
+                    //find the squares between the king and the checker
+                    slider_squares = get_ray_between_squares(our_king_square, checker_square);
+                }
 
-                                    if pawn_attacks & en_passant_capture_bb != 0{
-                                        moves.push(Move{
-                                            translation: Some(Translation { from: square, to: checker_square}),
-                                            promotion: None,
-                                            capture: Some(checker_piece),
-                                            castling:None,
-                                            en_passant: Some(checker_square), 
-                                        });
-                                    }
-                                }
+                let mut pin_path: Bitboard;
+
+                for piece in 0..6{
+                    let piece_bb = self.pieces[us.0][piece];
+
+                    for square in piece_bb.get_squares(){
+
+                        pin_path = Bitboard::FULL;
+
+                        if our_pins.all() & square.to_bitboard() != 0{
+                            if piece_bb & our_pins.pins_h != 0{
+                                pin_path = DIRECTIONAL_MAP_FILE[square as usize];
                             }
-                            else if piece == KNIGHT{
-                                //can the knight capture the checker?
-                                let knight_attacks = get_knight_attacks(square);
-                                if knight_attacks & checker_square_bb != 0{
-                                    //if the knight is pinned vertically or horizontally, it can't capture the checker
-                                    if our_pins.pins_h & square_bb == 0 && our_pins.pins_v & square_bb == 0{
+                            else if piece_bb & our_pins.pins_v != 0{
+                                pin_path = DIRECTIONAL_MAP_RANK[square as usize];
+                            }
+                            else if piece_bb & our_pins.pins_da != 0{
+                                pin_path = DIRECTIONAL_MAP_DA[square as usize];
+                            }
+                            else if piece_bb & our_pins.pins_dd != 0{
+                                pin_path = DIRECTIONAL_MAP_DD[square as usize];
+                            }    
+                        }
+
+                        if piece == PAWN{
+                            let pawn_attacks = (get_pawn_attacks(us, square) & !our_occupancy) & pin_path;
+                            let pawn_move_bb = (get_pawn_moves(us, square, occupancy) & !our_occupancy) & pin_path;
+                            let pawn_move = (pawn_move_bb & slider_squares).to_square();
+
+                            if pawn_attacks & checker_square_bb != 0{
+                                //pawn capture
+                                
+                                //generate promotion captures
+                                if (pawn_attacks & RANK_1BB != 0) || (pawn_attacks & RANK_8BB != 0){
+                                    for promotion in [QUEEN, ROOK, BISHOP, KNIGHT]{
                                         moves.push(Move{
-                                            translation: Some(Translation { from: square, to: checker_square }),
-                                            promotion: None,
+                                            translation: Some(Translation{
+                                                from: square,
+                                                to: checker_square,
+                                            }),
+                                            promotion: Some(promotion),
                                             capture: Some(checker_piece),
-                                            castling:None,
+                                            castling: None,
                                             en_passant: None, 
                                         });
                                     }
                                 }
-                                if checker_piece > KNIGHT {
-                                    //could the knight move to the square between the king and the checker?
-                                    let valid_knight_moves = knight_attacks & between_bb;
-                                    if valid_knight_moves != 0{
-                                        //if the knight is pinned vertically or horizontally, it can't move to the square between the king and the checker
-                                        if our_pins.pins_h & square_bb == 0 && our_pins.pins_v & square_bb == 0{
-                                            moves.push(Move{
-                                                translation: Some(Translation { from: square, to: valid_knight_moves.to_square() }),
-                                                promotion: None,
-                                                capture: None,
-                                                castling:None,
-                                                en_passant: None, 
-                                            });
-                                        }
-                                    }
+                                else{
+                                    moves.push(Move{
+                                        translation: Some(Translation{
+                                            from: square,
+                                            to: checker_square,
+                                        }),
+                                        promotion: None,
+                                        capture: Some(checker_piece),
+                                        castling: None,
+                                        en_passant: None, 
+                                    });
                                 }
                             }
-                            else if piece == BISHOP{
-                                //can the bishop capture the checker?
-                                let bishop_attacks = get_bishop_attacks(square, occupancy);
-                                if bishop_attacks & checker_square_bb != 0{
-                                    //if the bishop is pinned vertically or horizontally, it can't capture the checker
-                                    if our_pins.pins_h & square_bb == 0 && our_pins.pins_v & square_bb == 0{
+                            if pawn_move != Square::NONE{
+                                //generate promotion moves
+                                if (pawn_move_bb & RANK_1BB != 0) || (pawn_move_bb & RANK_8BB != 0){
+                                    for promotion in [QUEEN, ROOK, BISHOP, KNIGHT]{
                                         moves.push(Move{
-                                            translation: Some(Translation { from: square, to: checker_square }),
-                                            promotion: None,
-                                            capture: Some(checker_piece),
-                                            castling:None,
-                                            en_passant: None, 
-                                        });
-                                    }
-                                }
-                                if checker_piece > KNIGHT {
-                                    //could the bishop move to the square between the king and the checker?
-                                    let valid_bishop_moves = bishop_attacks & between_bb;
-                                    if valid_bishop_moves != 0{
-                                        //if the bishop is pinned vertically or horizontally, it can't move to the square between the king and the checker
-                                        if our_pins.pins_h & square_bb == 0 && our_pins.pins_v & square_bb == 0{
-                                            moves.push(Move{
-                                                translation: Some(Translation { from: square, to: valid_bishop_moves.to_square() }),
-                                                promotion: None,
-                                                capture: None,
-                                                castling:None,
-                                                en_passant: None, 
-                                            });
-                                        }
-                                    }
-                                }
-                            }
-                            else if piece == ROOK{
-                                //can the rook capture the checker?
-                                let rook_attacks = get_rook_attacks(square, occupancy);
-                                if rook_attacks & checker_square_bb != 0{
-                                    //if the rook is pinned diagonally, it can't capture the checker
-                                    if our_pins.pins_da & square_bb == 0 && our_pins.pins_dd & square_bb == 0{
-                                        //is checker on the same rank as the rook
-                                        if get_rank_mask(square) & checker_square_bb != 0{
-                                            //if the rook is pinned vertically, it can't capture the checker
-                                            if our_pins.pins_h & square_bb == 0{
-                                                moves.push(Move{
-                                                    translation: Some(Translation { from: square, to: checker_square }),
-                                                    promotion: None,
-                                                    capture: Some(checker_piece),
-                                                    castling:None,
-                                                    en_passant: None, 
-                                                });
-                                            }
-                                        }
-                                        else{
-                                            //if the rook is pinned horizontally, it can't capture the checker
-                                            if our_pins.pins_h & square_bb == 0{
-                                                moves.push(Move{
-                                                    translation: Some(Translation { from: square, to: checker_square }),
-                                                    promotion: None,
-                                                    capture: Some(checker_piece),
-                                                    castling:None,
-                                                    en_passant: None, 
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-                                if checker_piece > KNIGHT {
-                                    //could the rook move to the square between the king and the checker?
-                                    let valid_rook_moves = rook_attacks & between_bb;
-                                    if valid_rook_moves != 0{
-                                        //if the rook is pinned diagonally, it can't move to the square between the king and the checker
-                                        if our_pins.pins_da & square_bb == 0 && our_pins.pins_dd & square_bb == 0{
-                                            for valid_rook_move in valid_rook_moves.get_squares(){
-                                                let valid_rook_move_bb = Bitboard::from(valid_rook_move);
-                                                //is the valid rook move on the same rank as the rook
-                                                if get_rank_mask(square) & valid_rook_move_bb != 0{
-                                                    //if the rook is pinned vertically, it can't move to the square between the king and the checker
-                                                    if our_pins.pins_h & square_bb == 0{
-                                                        moves.push(Move{
-                                                            translation: Some(Translation { from: square, to: valid_rook_move }),
-                                                            promotion: None,
-                                                            capture: None,
-                                                            castling:None,
-                                                            en_passant: None, 
-                                                        });
-                                                    }
-                                                }
-                                                else{
-                                                    //if the rook is pinned horizontally, it can't move to the square between the king and the checker
-                                                    if our_pins.pins_h & square_bb == 0{
-                                                        moves.push(Move{
-                                                            translation: Some(Translation { from: square, to: valid_rook_move }),
-                                                            promotion: None,
-                                                            capture: None,
-                                                            castling:None,
-                                                            en_passant: None, 
-                                                        });
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            else if piece == QUEEN{
-                                //can the queen capture the checker?
-                                let queen_attacks = get_queen_attacks(square, occupancy);
-                                if queen_attacks & checker_square_bb != 0{
-                                    //is the checker on the same rank as the queen
-                                    if get_rank_mask(square) & checker_square_bb != 0{
-                                        //if the queen is pinned vertically or diagonally, it can't capture the checker
-                                        if our_pins.pins_h & square_bb == 0 && our_pins.pins_da & square_bb == 0 && our_pins.pins_dd & square_bb == 0{
-                                            moves.push(Move{
-                                                translation: Some(Translation { from: square, to: checker_square }),
-                                                promotion: None,
-                                                capture: Some(checker_piece),
-                                                castling:None,
-                                                en_passant: None, 
-                                            });
-                                        }
-                                    }
-                                    //is the checker on the same file as the queen
-                                    else if get_file_mask(square) & checker_square_bb != 0{
-                                        //if the queen is pinned horizontally or diagonally, it can't capture the checker
-                                        if our_pins.pins_v & square_bb == 0 && our_pins.pins_da & square_bb == 0 && our_pins.pins_dd & square_bb == 0{
-                                            moves.push(Move{
-                                                translation: Some(Translation { from: square, to: checker_square }),
-                                                promotion: None,
-                                                capture: Some(checker_piece),
-                                                castling:None,
-                                                en_passant: None, 
-                                            });
-                                        }
-                                    }
-                                    //is the checker on the same descending diagonal as the queen
-                                    else if DIRECTIONAL_MAP_DD[square as usize] & checker_square_bb != 0{
-                                        //if the queen is pinned vertically or horizontally, it can't capture the checker
-                                        if our_pins.pins_h & square_bb == 0 && our_pins.pins_v & square_bb == 0{
-                                            moves.push(Move{
-                                                translation: Some(Translation { from: square, to: checker_square }),
-                                                promotion: None,
-                                                capture: Some(checker_piece),
-                                                castling:None,
-                                                en_passant: None, 
-                                            });
-                                        }
-                                    }
-                                    //is the checker on the same ascending diagonal as the queen
-                                    else if DIRECTIONAL_MAP_DA[square as usize] & checker_square_bb != 0{
-                                        //if the queen is pinned vertically or horizontally, it can't capture the checker
-                                        if our_pins.pins_h & square_bb == 0 && our_pins.pins_v & square_bb == 0{
-                                            moves.push(Move{
-                                                translation: Some(Translation { from: square, to: checker_square }),
-                                                promotion: None,
-                                                capture: Some(checker_piece),
-                                                castling:None,
-                                                en_passant: None, 
-                                            });
-                                        }
-                                    }
-                                }
-                                if checker_piece > KNIGHT {
-                                    //could the queen move to the square between the king and the checker?
-                                    let valid_queen_moves = queen_attacks & between_bb;
-                                    for valid_queen_move in valid_queen_moves.get_squares(){
-                                        let valid_queen_move_bb = Bitboard::from(valid_queen_move);
-                                        //is the valid queen move on the same rank as the queen
-                                        if get_rank_mask(square) & valid_queen_move_bb != 0{
-                                            //if the queen is pinned vertically or diagonally, it can't move to the square between the king and the checker
-                                            if our_pins.pins_h & square_bb == 0 && our_pins.pins_da & square_bb == 0 && our_pins.pins_dd & square_bb == 0{
-                                                moves.push(Move{
-                                                    translation: Some(Translation { from: square, to: valid_queen_move }),
-                                                    promotion: None,
-                                                    capture: None,
-                                                    castling:None,
-                                                    en_passant: None, 
-                                                });
-                                            }
-                                        }
-                                        //is the valid queen move on the same file as the queen
-                                        else if get_file_mask(square) & valid_queen_move_bb != 0{
-                                            //if the queen is pinned horizontally or diagonally, it can't move to the square between the king and the checker
-                                            if our_pins.pins_v & square_bb == 0 && our_pins.pins_da & square_bb == 0 && our_pins.pins_dd & square_bb == 0{
-                                                moves.push(Move{
-                                                    translation: Some(Translation { from: square, to: valid_queen_move }),
-                                                    promotion: None,
-                                                    capture: None,
-                                                    castling:None,
-                                                    en_passant: None, 
-                                                });
-                                            }
-                                        }
-                                        else{
-                                            //if the queen is pinned vertically or horizontally, it can't move to the square between the king and the checker
-                                            if our_pins.pins_h & square_bb == 0 && our_pins.pins_v & square_bb == 0{
-                                                moves.push(Move{
-                                                    translation: Some(Translation { from: square, to: valid_queen_move }),
-                                                    promotion: None,
-                                                    capture: None,
-                                                    castling:None,
-                                                    en_passant: None, 
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            else if piece == KING{
-                                //can the king capture the checker?
-                                let mut valid_attacks = get_king_attacks(square) & !our_occupancy;
-
-                                if(debug == Some(true)){
-                                    println!("valid attacks1: {}", valid_attacks);
-                                }
-
-                                valid_attacks &= !their_attacks_without_our_king.all();
-
-                                if(debug == Some(true)){
-                                    println!("valid attacks2: {}", valid_attacks);
-                                }
-
-                                for attack in valid_attacks.get_squares(){
-                                    let attack_bb = Bitboard::from(attack);
-                                    if attack_bb & checker_square_bb != 0{
-                                        moves.push(Move{
-                                            translation: Some(Translation { from: square, to: attack }),
-                                            promotion: None,
-                                            capture: Some(checker_piece),
-                                            castling:None,
-                                            en_passant: None, 
-                                        });
-                                    }
-                                    else if attack_bb & their_occupancy != 0{
-                                        //find which piece the king is attacking
-                                        let piece = self.pieces[them.0].get_piece_type_at_square(square);
-                                        //king eats the piece
-                                        moves.push(Move{
-                                            translation: Some(Translation { from: square, to: attack }),
-                                            promotion: None,
-                                            capture: piece,
-                                            castling:None,
-                                            en_passant: None, 
-                                        });
-                                    }
-                                    else{
-                                        //normal king move
-                                        moves.push(Move{
-                                            translation: Some(Translation { from: square, to: attack }),
-                                            promotion: None,
+                                            translation: Some(Translation{
+                                                from: square,
+                                                to: pawn_move,
+                                            }),
+                                            promotion: Some(promotion),
                                             capture: None,
-                                            castling:None,
+                                            castling: None,
                                             en_passant: None, 
+                                        });
+                                    }
+                                }
+                                else{
+                                    moves.push(Move{
+                                        translation: Some(Translation{
+                                            from: square,
+                                            to: pawn_move,
+                                        }),
+                                        promotion: None,
+                                        capture: None,
+                                        castling: None,
+                                        en_passant: None, 
+                                    });
+                                }
+                            }
+                            if self.en_passant_square.is_some(){
+                                //en passant
+                                let en_passant_square = self.en_passant_square.unwrap();
+                                let en_passant_square_bb = en_passant_square.to_bitboard();
+                                let enemy_pawn_square = if us == Side::WHITE { en_passant_square - 8 } else { en_passant_square + 8 };
+                                let enemy_pawn_square_bb = enemy_pawn_square.to_bitboard();
+
+                                if pawn_attacks & en_passant_square_bb != 0{
+                                    let en_passant_eats_checker = enemy_pawn_square_bb & checker_square_bb != 0;
+                                    let en_passant_blocks_checker = en_passant_square_bb & slider_squares != 0;
+                                    if en_passant_eats_checker || en_passant_blocks_checker{
+                                        moves.push(Move{
+                                            translation: Some(Translation { from: square, to: en_passant_square }),
+                                            promotion: None,
+                                            capture: Some(PAWN),
+                                            castling:None,
+                                            en_passant: Some(en_passant_square), 
                                         });
                                     }
                                 }
                             }   
                         }
-                    }    
-                }
-                
+                        else if piece == KNIGHT{
+                            let knight_attacks = (get_knight_attacks(square) & !our_occupancy) & pin_path;
+
+
+                            if knight_attacks & checker_square_bb != 0{
+                                //knight captures checker
+                                moves.push(Move{
+                                    translation: Some(Translation { from: square, to: checker_square }),
+                                    promotion: None,
+                                    capture: Some(checker_piece),
+                                    castling:None,
+                                    en_passant: None, 
+                                });
+                            }
+                            //check if knight can move to block the check
+                            let valid_moves = (knight_attacks & slider_squares) & pin_path;
+
+                            if valid_moves != 0{
+                                for valid_move in valid_moves.get_squares(){
+                                    moves.push(Move{
+                                        translation: Some(Translation { from: square, to: valid_move }),
+                                        promotion: None,
+                                        capture: None,
+                                        castling:None,
+                                        en_passant: None, 
+                                    });
+                                }
+                            }
+                        }
+                        else if piece == BISHOP{
+                            let bishop_attacks = (get_bishop_attacks(square, occupancy) & !our_occupancy) & pin_path;
+
+                            if bishop_attacks & checker_square_bb != 0{
+                                //bishop captures checker
+                                moves.push(Move{
+                                    translation: Some(Translation { from: square, to: checker_square }),
+                                    promotion: None,
+                                    capture: Some(checker_piece),
+                                    castling:None,
+                                    en_passant: None, 
+                                });
+                            }
+                            let bishop_moves = (bishop_attacks & slider_squares) & pin_path;
+
+                            if bishop_moves != 0{
+                                for bishop_move in bishop_moves.get_squares(){
+                                    moves.push(Move{
+                                        translation: Some(Translation { from: square, to: bishop_move }),
+                                        promotion: None,
+                                        capture: None,
+                                        castling:None,
+                                        en_passant: None, 
+                                    });
+                                }
+                            }
+                        }
+                        else if piece == ROOK{
+                            let rook_attacks = (get_rook_attacks(square, occupancy) & !our_occupancy) & pin_path;
+                            
+                            if rook_attacks & checker_square_bb != 0{
+                                //rook captures checker
+                                moves.push(Move{
+                                    translation: Some(Translation { from: square, to: checker_square }),
+                                    promotion: None,
+                                    capture: Some(checker_piece),
+                                    castling:None,
+                                    en_passant: None, 
+                                });
+                            }
+                            let rook_moves = (rook_attacks & slider_squares) & pin_path;
+
+                            if rook_moves != 0{
+                                for rook_move in rook_moves.get_squares(){
+                                    moves.push(Move{
+                                        translation: Some(Translation { from: square, to: rook_move }),
+                                        promotion: None,
+                                        capture: None,
+                                        castling:None,
+                                        en_passant: None, 
+                                    });
+                                }
+                            }
+                        }
+                        else if piece == QUEEN{
+                            let queen_attacks = (get_queen_attacks(square, occupancy) & !our_occupancy) & pin_path;
+
+                            if queen_attacks & checker_square_bb != 0{
+                                //queen captures checker
+                                moves.push(Move{
+                                    translation: Some(Translation { from: square, to: checker_square }),
+                                    promotion: None,
+                                    capture: Some(checker_piece),
+                                    castling:None,
+                                    en_passant: None, 
+                                });
+                            }
+
+                            let queen_moves = (queen_attacks & slider_squares) & pin_path;
+
+                            if queen_moves != 0{
+                                for queen_move in queen_moves.get_squares(){
+                                    moves.push(Move{
+                                        translation: Some(Translation { from: square, to: queen_move }),
+                                        promotion: None,
+                                        capture: None,
+                                        castling:None,
+                                        en_passant: None, 
+                                    });
+                                }
+                            }
+                        }
+                        else if piece == KING{
+
+                            let mut valid_attacks = get_king_attacks(square) & !our_occupancy;
+                            valid_attacks &= !their_attacks_without_our_king.all();
+
+                            for attack in valid_attacks.get_squares(){
+                                let attack_bb = attack.to_bitboard();
+                                if attack_bb & checker_square_bb != 0{
+                                    moves.push(Move{
+                                        translation: Some(Translation { from: square, to: attack }),
+                                        promotion: None,
+                                        capture: Some(checker_piece),
+                                        castling:None,
+                                        en_passant: None, 
+                                    });
+                                }
+                                else if attack_bb & their_occupancy != 0{
+                                    //find which piece the king is attacking
+                                    let piece = self.pieces[them.0].get_piece_type_at_square(square);
+                                    //king eats the piece
+                                    moves.push(Move{
+                                        translation: Some(Translation { from: square, to: attack }),
+                                        promotion: None,
+                                        capture: piece,
+                                        castling:None,
+                                        en_passant: None, 
+                                    });
+                                }
+                                else{
+                                    //normal king move
+                                    moves.push(Move{
+                                        translation: Some(Translation { from: square, to: attack }),
+                                        promotion: None,
+                                        capture: None,
+                                        castling:None,
+                                        en_passant: None, 
+                                    });
+                                }
+                            }
+                        }   
+                    }
+                }    
                 //no moves available after check
                 if moves.is_empty(){
                     score = if us == Side::WHITE { Some(SCORE_BLACK_WINS) } else { Some(SCORE_WHITE_WINS) };
                     return PositionEvaluation{
                         game_state: GameState::CHECKMATE,
+                        state_note: Some("No moves after check.".to_string()),
                         moves,
                         score
                     }
@@ -1808,6 +1728,7 @@ impl Position{
 
         return PositionEvaluation{
             game_state,
+            state_note: None,
             moves,
             score
         };
@@ -1815,11 +1736,15 @@ impl Position{
 
     pub fn make_move(&self, m: Move) -> Position{
         let mut new_position = self.clone();
-
+        
         let us = self.side_to_move;
 
-        //if the move includes a translation
-        if m.translation.is_some(){
+        new_position.en_passant_square = None;
+        new_position.side_to_move = !us;
+
+
+        //if the move is not a castle and includes a translation
+        if m.castling.is_none() && m.translation.is_some(){
             let translation = m.translation.unwrap();
             let from_piece_wrapped = self.pieces[us.0].get_piece_type_at_square(translation.from);
             if from_piece_wrapped.is_none(){
@@ -1830,28 +1755,22 @@ impl Position{
             if from_piece == PAWN{
                 //check if en passant is involved
                 if m.en_passant.is_some(){
-                    //self en passant or opponent en passant?
-                    let en_passant = m.en_passant.unwrap();
-                    //en_passant is the square the pawn is moving to
-                    if en_passant == translation.to{
                         new_position.pieces[us.0][PAWN] = new_position.pieces[us.0][PAWN].set_bit(translation.to);
-                        new_position.en_passant_square = Some(translation.to);
-                        //remove original pawn
-                        new_position.pieces[us.0][PAWN] = new_position.pieces[us.0][PAWN].unset_bit(translation.from);
-                    }
-                    else{
-                        //opponent en passant
-                        new_position.pieces[us.0][PAWN] = new_position.pieces[us.0][PAWN].set_bit(translation.to);
-                        new_position.en_passant_square = None;
                         //remove the captured pawn
-                        new_position.pieces[(!us).0][PAWN] = new_position.pieces[(!us).0][PAWN].unset_bit(en_passant);
+                        let their_pawn = if us == Side::WHITE { translation.to - 8 } else { translation.to + 8 };
+                        new_position.pieces[(!us).0][PAWN] = new_position.pieces[(!us).0][PAWN].unset_bit(their_pawn);
                         //remove original pawn
-                        new_position.pieces[us.0][PAWN] = new_position.pieces[us.0][PAWN].unset_bit(translation.from);
-
-                    }
+                        new_position.pieces[us.0][PAWN] = new_position.pieces[us.0][PAWN].unset_bit(translation.from);                        
                 }
                 else{
-                    //no en passant, just a normal pawn move
+                    //check if en passant is possible
+                    if translation.to == translation.from + 16 || translation.to == translation.from - 16{
+                        //check if pawn has enemy pawn next on the to square
+                        let to_side_bb = translation.to.to_bitboard() << 1 | translation.to.to_bitboard() >> 1;
+                        if to_side_bb & self.pieces[(!us).0][PAWN] != 0{
+                            new_position.en_passant_square = if us == Side::WHITE { Some(translation.to - 8) } else { Some(translation.to + 8) };
+                        }
+                    }
 
                     //check if promotion is involved
                     if m.promotion.is_some(){
@@ -1922,6 +1841,8 @@ impl Position{
         }
         //castling
         else if m.castling.is_some(){
+            new_position.halfmove_clock += 1;
+
             if us == Side::WHITE{
                 let white_king = new_position.pieces[us.0][KING].to_square();
 
@@ -1964,17 +1885,14 @@ impl Position{
                     panic!("Invalid castling move!");
                 }
             }
-            new_position.halfmove_clock += 1;
         }
         else{
             panic!("Unidentified move!");
         }
+
         if us == Side::BLACK{
             new_position.fullmove_number += 1;
         }
-
-        new_position.side_to_move = !us;
-        new_position.halfmove_clock += 1;
 
         return new_position;
     }

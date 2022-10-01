@@ -5,6 +5,62 @@ use crate::bitboard::*;
 #[derive(PartialEq, Eq)]
 pub struct GameState(pub u8);
 pub type Piece = usize;
+
+
+
+pub trait PieceMethods{
+   fn from_char_board(c: char) -> Option<(Piece, Side)>;
+   fn to_char_board(&self, side: Side) -> char;
+   fn to_notation(&self) -> &str;
+}
+
+impl PieceMethods for Piece{
+   fn from_char_board(c: char) -> Option<(Piece, Side)>{
+       match c{
+              'P' => Some((0, Side::WHITE)),
+              'N' => Some((1, Side::WHITE)),
+              'B' => Some((2, Side::WHITE)),
+              'R' => Some((3, Side::WHITE)),
+              'Q' => Some((4, Side::WHITE)),
+              'K' => Some((5, Side::WHITE)),
+              'p' => Some((0, Side::BLACK)),
+              'n' => Some((1, Side::BLACK)),
+              'b' => Some((2, Side::BLACK)),
+              'r' => Some((3, Side::BLACK)),
+              'q' => Some((4, Side::BLACK)),
+              'k' => Some((5, Side::BLACK)),
+              _ => None,
+       }
+   }
+    
+    fn to_char_board(&self, side: Side) -> char{
+        match self{
+            0 => if side == Side::WHITE {'P'} else {'p'},
+            1 => if side == Side::WHITE {'N'} else {'n'},
+            2 => if side == Side::WHITE {'B'} else {'b'},
+            3 => if side == Side::WHITE {'R'} else {'r'},
+            4 => if side == Side::WHITE {'Q'} else {'q'},
+            5 => if side == Side::WHITE {'K'} else {'k'},
+            _ => panic!("Invalid piece type"),
+        }
+    }
+
+    fn to_notation(&self) -> &str{
+        match self{
+            0 => "",
+            1 => "N",
+            2 => "B",
+            3 => "R",
+            4 => "Q",
+            5 => "K",
+            _ => panic!("Invalid piece type"),
+        }
+    }
+
+}
+
+
+
 pub type CastlingDirection = usize;
 
 //GAMESTATE CONSTANTS
@@ -79,6 +135,22 @@ pub trait SideConstants{
     const BLACK: Side;
 }
 
+pub trait SideMethods{
+    fn to_char(&self) -> char;
+}
+
+impl SideMethods for Side{
+
+    fn to_char(&self) -> char {
+        match *self{
+            Side::WHITE => 'w',
+            Side::BLACK => 'b',
+            _ => panic!("Error: Unexpected value in Side: {}", self)
+        }
+    }
+
+}
+
 impl SideConstants for Side{
     const WHITE: Side = Side(0);
     const BLACK: Side = Side(1);
@@ -126,21 +198,45 @@ pub trait SquareConstants{
     const E7: Square; const F7: Square; const G7: Square; const H7: Square;
     const A8: Square; const B8: Square; const C8: Square; const D8: Square; 
     const E8: Square; const F8: Square; const G8: Square; const H8: Square;
+    const NONE: Square;
 }
 
 pub trait SquareMethods{
-    fn get_string(&self) -> String;
+    fn to_bitboard(&self) -> Bitboard;
+    fn get_rank(&self) -> usize;
+    fn get_file(&self) -> usize;
+    fn from_rank_and_file(rank: usize, file: usize) -> Square;
+    fn from_string(square: &str) -> Square;
+    fn as_string(&self) -> String;
 }
 
 impl SquareMethods for Square{
-    fn get_string(&self) -> String{
+    fn to_bitboard(&self) -> Bitboard{
+        return 1_u64 << *self as u8;
+    }
+
+    fn get_rank(&self) -> usize{
+        return (self / 8) as usize;
+    }
+    fn get_file(&self) -> usize {
+        return (self % 8) as usize;
+    }
+    fn from_rank_and_file(rank: usize, file: usize) -> Square{
+        return (rank * 8 + file) as Square;
+    }
+    fn from_string(square: &str) -> Square {
+        let mut chars = square.chars();
+        let file = chars.next().unwrap() as usize - 'a' as usize;
+        let rank = chars.next().unwrap() as usize - '1' as usize;
+        return Square::from_rank_and_file(rank, file);
+    }
+    fn as_string(&self) -> String{
         let mut string = String::new();
-        string.push((self % 8 + 97) as u8 as char);
-        string.push((self / 8 + 49) as u8 as char);
+        string.push((self.get_file() + 'a' as usize) as u8 as char);
+        string.push((self.get_rank() + '1' as usize) as u8 as char);
         return string;
     }
 }
-
 
 impl SquareConstants for Square{
     const A1: Square = 0;  const B1: Square = 1;
@@ -175,6 +271,7 @@ impl SquareConstants for Square{
     const C8: Square = 58; const D8: Square = 59;
     const E8: Square = 60; const F8: Square = 61;
     const G8: Square = 62; const H8: Square = 63;
+    const NONE: Square = 64;
 }
 
 pub struct Squares;
