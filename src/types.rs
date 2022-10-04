@@ -3,6 +3,7 @@ use bitintr::Pext;
 use crate::bitboard::*;
 
 #[derive(PartialEq, Eq)]
+#[derive(Clone)]
 pub struct GameState(pub u8);
 pub type Piece = usize;
 
@@ -68,8 +69,7 @@ pub trait GameStateConstants{
     const CHECKMATE: GameState;
     const CHECK: GameState;
     const DRAW: GameState;
-    const IN_PROGRESS: GameState;
-    const INVALID_STATE: GameState;
+    const ONGOING: GameState;
 }
 
 impl Display for GameState {
@@ -78,8 +78,7 @@ impl Display for GameState {
             GameState::CHECKMATE => write!(f, "CHECKMATE"),
             GameState::CHECK => write!(f, "CHECK"),
             GameState::DRAW => write!(f, "DRAW"),
-            GameState::IN_PROGRESS => write!(f, "IN_PROGRESS"),
-            GameState::INVALID_STATE => write!(f, "INVALID_STATE"),
+            GameState::ONGOING => write!(f, "IN_PROGRESS"),
             _ => panic!("Error: Unexpected value in Side: {}", self)
         }
     }
@@ -89,8 +88,7 @@ impl GameStateConstants for GameState{
     const CHECKMATE: GameState = GameState(0);
     const CHECK: GameState = GameState(1);
     const DRAW: GameState = GameState(2);
-    const IN_PROGRESS: GameState = GameState(3);
-    const INVALID_STATE: GameState = GameState(4);
+    const ONGOING: GameState = GameState(3);
 }
 
 //CASTLING SIDE
@@ -98,6 +96,8 @@ pub const KING_SIDE : CastlingDirection = 0;
 pub const QUEEN_SIDE : CastlingDirection = 1;
 
 //PIECES
+pub const PIECES: [&str; 6] = ["PAWN", "KNIGHT", "BISHOP", "ROOK", "QUEEN", "KING"];
+
 pub const PAWN: Piece = 0;
 pub const KNIGHT: Piece = 1;
 pub const BISHOP: Piece = 2;
@@ -148,7 +148,6 @@ impl SideMethods for Side{
             _ => panic!("Error: Unexpected value in Side: {}", self)
         }
     }
-
 }
 
 impl SideConstants for Side{

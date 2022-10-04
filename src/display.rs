@@ -97,7 +97,7 @@ pub fn print_position(position: &Position){
             let square: u8 = (rank-1)*8+file-1;
             let square_bb = square.to_bitboard();
             let side = if square_bb & position.pieces[Side::WHITE.0].occupancy() != 0 {Side::WHITE} else {Side::BLACK};
-            let piece_type = position.pieces[side.0].get_piece_type_at_square(square);
+            let piece_type = position.pieces[side.0].get_piece_type_at_square(square_bb);
             if piece_type.is_none(){
                 print!(".  ");
             }else{

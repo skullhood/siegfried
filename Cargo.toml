@@ -15,6 +15,7 @@ rand = "0.8.4"
 bitintr = "0.3.0"
 rand_pcg = "0.3.1"
 serde_json = "1.0"
+rayon = "1.5"
 
 [dev-dependencies]
 criterion = "0.3"
@@ -22,5 +23,3 @@ criterion = "0.3"
 [[bench]]
 name = "bitmath"
 harness = false
-
-

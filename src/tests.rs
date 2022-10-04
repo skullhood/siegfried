@@ -26,10 +26,29 @@ pub fn move_generation_test(){
 
         let fen_move_strings = fen_moves.iter().map(|m| m.as_str().unwrap().to_string()).collect::<Vec<String>>();
 
+        let fen_copy = fen_move_strings.clone();
+
         //check if all moves are in the position moves
         for fen_move in fen_move_strings{
             if position_eval.game_state != GameState::DRAW && !position_moves.contains(&fen_move){
 
+                position_eval = position.evaluate();
+
+                println!("Position Moves: ");
+
+                print_position(&position);
+                println!("fen: {}", key);
+                println!("gamestate: {}", position_eval.game_state);
+                println!("{} to move", position.side_to_move);
+                println!("Keycount: {}", key_count);
+                println!("Castling: {:?}", position.castling_rights);
+                panic!("{} not in position moves", fen_move);
+            }
+        }
+
+        //check if all position moves are in the fen moves
+        for position_move in position_moves{
+            if position_eval.game_state != GameState::DRAW && !fen_copy.contains(&position_move){
                 position_eval = position.evaluate();
 
                 println!("Position Moves: ");
@@ -42,9 +61,8 @@ pub fn move_generation_test(){
                 println!("{} to move", position.side_to_move);
                 println!("Keycount: {}", key_count);
                 println!("Castling: {:?}", position.castling_rights);
-                panic!("{} not in position moves", fen_move);
+                panic!("{} not in fen moves", position_move);
             }
-
         }
     }
 }

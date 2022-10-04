@@ -1,5 +1,6 @@
 use core::panic;
 use std::{fmt::{Display, Formatter, Result}};
+use rayon::prelude::*;
 
 use crate::{
     bitboard::*, 
@@ -15,27 +16,29 @@ use crate::{
         DIRECTIONAL_MAP_RANK,
         DIRECTIONAL_MAP_DD, 
         DIRECTIONAL_MAP_DA, get_ray_between_squares, get_pawn_moves, 
-        }
+        }, display::{print_position}
     };
 
 pub struct PositionEvaluation{
     pub moves: Vec<Move>,
     pub game_state: GameState,
     pub state_note: Option<String>,
-    pub score: Option<i32>
+    pub score: Option<f32>
 }
 
-const SCORE_WHITE_WINS: i32 = 1000000;
-const SCORE_BLACK_WINS: i32 = -1000000;
-const SCORE_DRAW: i32 = 0;
+const PIN_MULTIPLIER: f32 = 10.0;
+const SQUARE_MULTIPLIER: f32 = 10.0;
 
-const PIECE_VALUES: [i32; 6] = [
-    100,
-    300,
-    300,
-    500,
-    900,
-    0
+const SCORE_WHITE_WINS: f32 = 1000000.0;
+const SCORE_BLACK_WINS: f32 = -1000000.0;
+
+const PIECE_VALUES: [f32; 6] = [
+    100.0,
+    300.0,
+    300.0,
+    500.0,
+    900.0,
+    0.0
 ];
 
 pub type SidePieces = [Bitboard; 6];
@@ -44,7 +47,7 @@ pub trait SidePiecesMethods{
     fn new() -> SidePieces;
     fn new_game(side: Side) -> SidePieces;
     fn occupancy(&self) -> Bitboard;
-    fn get_piece_type_at_square(&self, square: Square) -> Option<Piece>;
+    fn get_piece_type_at_square(&self, square: Bitboard) -> Option<Piece>;
 }
 
 impl SidePiecesMethods for SidePieces{
@@ -111,9 +114,9 @@ impl SidePiecesMethods for SidePieces{
         return occupancy;
     }
 
-    fn get_piece_type_at_square(&self, square: Square) -> Option<Piece>{
+    fn get_piece_type_at_square(&self, square: Bitboard) -> Option<Piece>{
         for x in 0..6{
-            if self[x] & square.to_bitboard() != 0{
+            if self[x] & square != 0{
                 return Some(x);
             }
         }
@@ -123,7 +126,7 @@ impl SidePiecesMethods for SidePieces{
 }
 
 
-
+#[derive(PartialEq)]
 #[derive(Clone)]
 #[derive(Copy)]
 pub struct ZobristHasher{
@@ -196,6 +199,7 @@ impl ZobristHasher{
 
 const MAX_ZOBRIST_ARRAY_SIZE: usize = 100;
 
+#[derive(PartialEq)]
 #[derive(Copy)]
 #[derive(Clone)]
 pub struct ZobristMoveStack{
@@ -212,19 +216,7 @@ impl ZobristMoveStack{
     }
 
     pub fn get_repetitions(&self, zobrist_hash: u64) -> usize{
-        let mut repetitions: usize = 0;
-
-        //traverse the array backwards
-        for i in (0..MAX_ZOBRIST_ARRAY_SIZE).rev(){
-            if self.zobrist_array[i] == zobrist_hash{
-                repetitions += 1;
-                if repetitions >= 3{
-                    return repetitions;
-                }
-            }
-        }
-
-        return repetitions;
+        return self.zobrist_array.par_iter().filter(|&&x| x == zobrist_hash).count();
     }
 
     pub fn add(&mut self, zobrist_hash: u64){
@@ -242,6 +234,7 @@ impl ZobristMoveStack{
     }
 }
 
+#[derive(PartialEq)]
 #[derive(Debug)]
 #[derive(Copy)]
 #[derive(Clone)]
@@ -339,6 +332,7 @@ impl Castling {
     }
 }
 
+#[derive(PartialEq)]
 #[derive(Copy)]
 #[derive(Clone)]
 pub struct Translation {
@@ -346,6 +340,7 @@ pub struct Translation {
     pub to: Square,
 }
 
+#[derive(PartialEq)]
 #[derive(Copy)]
 #[derive(Clone)]
 pub struct Move{
@@ -380,6 +375,7 @@ impl Move{
 
         return tstring;
     }
+
 }
 
 impl Display for Move {
@@ -413,6 +409,7 @@ impl Display for Move {
     }
 }
 
+#[derive(PartialEq)]
 #[derive(Copy)]
 #[derive(Clone)]
 pub struct Position{
@@ -628,6 +625,7 @@ impl Position{
         return fen_string;
     }
 
+
     fn get_side_attacks(self, side: Side, occupancy: Bitboard) -> SideAttacks{
         let mut check: Option<PieceInfo> = None;
         let mut double_check: bool = false;
@@ -741,17 +739,26 @@ impl Position{
             rays_da
         };
     }
-
+    
     fn get_absolute_pins_for_side(self, enemy_attacks: SideAttacks, occupancy: Bitboard, defender_occupancy: Bitboard, defender_king_square: Square) -> AbsolutePins{
         let mut pins_h: Bitboard = 0;
         let mut pins_v: Bitboard = 0;
         let mut pins_dd: Bitboard = 0;
         let mut pins_da: Bitboard = 0;
 
+        if defender_king_square == 64{
+            print_position(&self);
+
+            self.print_position_pieces();
+
+            panic!("defender king square is 64");
+        }
+
         //check attacks horizontal
         let relevant_rank = DIRECTIONAL_MAP_RANK[defender_king_square as usize];
         let king_sees = get_rook_attacks(defender_king_square, occupancy) & relevant_rank & defender_occupancy;
         let enemy_sees = enemy_attacks.rays_h & relevant_rank & defender_occupancy;
+
         if king_sees & enemy_sees != 0{
             pins_h |= king_sees & enemy_sees;
         }
@@ -790,29 +797,18 @@ impl Position{
 
     }
 
-    fn get_raw_score(self) -> i32{
-        //iterate through all pieces and add their values
-        let mut white_score = 0;
-        let mut black_score = 0;
-
-        let white_pieces = self.pieces[Side::WHITE.0];
-        let black_pieces = self.pieces[Side::BLACK.0];
-
-        for i in 0..6{
-            let white_piece = white_pieces[i];
-            let black_piece = black_pieces[i];
-
-            white_score += white_piece.count_ones() as i32 * PIECE_VALUES[i];
-            black_score += black_piece.count_ones() as i32 * PIECE_VALUES[i];
-        }
-
-
-        return white_score - black_score;
+    fn get_score(self) -> f32{
+        return (PIECE_VALUES[PAWN] * (self.pieces[Side::WHITE.0][PAWN].count_ones() as f32 - self.pieces[Side::BLACK.0][PAWN].count_ones() as f32))
+               + (PIECE_VALUES[KNIGHT] * (self.pieces[Side::WHITE.0][KNIGHT].count_ones() as f32 - self.pieces[Side::BLACK.0][KNIGHT].count_ones() as f32))
+               + (PIECE_VALUES[BISHOP] * (self.pieces[Side::WHITE.0][BISHOP].count_ones() as f32 - self.pieces[Side::BLACK.0][BISHOP].count_ones() as f32))
+               + (PIECE_VALUES[ROOK] * (self.pieces[Side::WHITE.0][ROOK].count_ones() as f32 - self.pieces[Side::BLACK.0][ROOK].count_ones() as f32))
+               + (PIECE_VALUES[QUEEN] * (self.pieces[Side::WHITE.0][QUEEN].count_ones() as f32 - self.pieces[Side::BLACK.0][QUEEN].count_ones() as f32));
     }
 
     fn check_draw(&mut self) -> (bool, String){
 
         //check for 3-fold repetition
+
         let current_position_hash = self.hasher.hash_position(self);
         self.zobrist_stack.add(current_position_hash);
         let repetitions = self.zobrist_stack.get_repetitions(current_position_hash);
@@ -898,11 +894,11 @@ impl Position{
                 moves,
                 game_state: GameState::DRAW,
                 state_note: Some(draw_check.1),
-                score: Some(SCORE_DRAW)
+                score: Some(0.0)
             }
         }
 
-        let mut game_state: GameState = GameState::IN_PROGRESS;
+        let mut game_state: GameState = GameState::ONGOING;
 
         let us = self.side_to_move;
         let them = !us;
@@ -914,13 +910,23 @@ impl Position{
         let our_king: Bitboard = self.pieces[us.0][KING];
         let our_king_square = our_king.to_square();
 
+        let their_king = self.pieces[them.0][KING];
+        let their_king_square = their_king.to_square();
+
         let occupancy_without_our_king = occupancy & !our_king;
 
         let their_attacks = self.get_side_attacks(them, occupancy);
         let their_attacks_without_our_king = self.get_side_attacks(them, occupancy_without_our_king);
-        let our_pins = self.get_absolute_pins_for_side(their_attacks, occupancy, our_occupancy, our_king.to_square());
 
-        let mut score = Some(self.get_raw_score());
+        let our_attacks = self.get_side_attacks(us, occupancy);
+
+        let our_pins = self.get_absolute_pins_for_side(their_attacks, occupancy, our_occupancy, our_king_square);
+        let their_pins = self.get_absolute_pins_for_side(our_attacks, occupancy, their_occupancy, their_king_square);
+
+        let pinscore = (our_pins.all().count_ones() as f32 - their_pins.all().count_ones() as f32) * PIN_MULTIPLIER;
+        let movescore = (their_attacks.all().count_ones() as f32 - our_attacks.all().count_ones() as f32) * SQUARE_MULTIPLIER;
+
+        let mut score = Some(self.get_score() + pinscore + movescore);
 
         //make sure king is not in check
         if their_attacks.check.is_none(){
@@ -1056,7 +1062,16 @@ impl Position{
                 }
                 //if pawn is not pinned horizontally or vertically, generate pawn captures
                 if our_pins.pins_h & square_bb == 0 && our_pins.pins_v & square_bb == 0{
-                    let pawn_attacks = get_pawn_attacks(us, square);
+                    let mut valid_capture_path = Bitboard::FULL;
+
+                    if our_pins.pins_da & square_bb != 0{
+                        valid_capture_path = valid_capture_path & DIRECTIONAL_MAP_DA[square as usize];
+                    }
+                    if our_pins.pins_dd & square_bb != 0{
+                        valid_capture_path = valid_capture_path & DIRECTIONAL_MAP_DD[square as usize];
+                    }
+
+                    let pawn_attacks = get_pawn_attacks(us, square) & valid_capture_path;
                     
                     //generate normal pawn captures first
                     let pawn_captures = pawn_attacks & their_occupancy;
@@ -1074,7 +1089,7 @@ impl Position{
                                         to: pawn_capture_square,
                                     }),
                                     promotion: Some(*promotion_piece),
-                                    capture: self.pieces[them.0].get_piece_type_at_square(square),
+                                    capture: self.pieces[them.0].get_piece_type_at_square(pawn_capture_square_bb),
                                     castling: None,
                                     en_passant: None, 
                                 });
@@ -1088,7 +1103,7 @@ impl Position{
                                     to: pawn_capture_square,
                                 }),
                                 promotion: None,
-                                capture: self.pieces[them.0].get_piece_type_at_square(square),
+                                capture: self.pieces[them.0].get_piece_type_at_square(pawn_capture_square_bb),
                                 castling: None,
                                 en_passant: None, 
                             });
@@ -1136,7 +1151,7 @@ impl Position{
                                     to: valid_knight_attack,
                                 }),
                                 promotion: None,
-                                capture: self.pieces[them.0].get_piece_type_at_square(valid_knight_attack),
+                                capture: self.pieces[them.0].get_piece_type_at_square(valid_knight_attack_bb),
                                 castling: None,
                                 en_passant: None, 
                             });
@@ -1168,7 +1183,7 @@ impl Position{
 
                 //if bishop is pinned horizontally or vertically, skip generating bishop moves
                 if our_pins.pins_h & current_bishop_bb == 0 && our_pins.pins_v & current_bishop_bb == 0{
-                    let valid_bishop_attacks: Bitboard;
+                    let mut valid_bishop_attacks: Bitboard;
                     
                     //if bishop is pinned diagonally, filter out moves that are not along the pin
                     if our_pins.pins_dd & current_bishop_bb != 0{
@@ -1184,6 +1199,8 @@ impl Position{
                         valid_bishop_attacks = bishop_attacks;
                     }
 
+                    valid_bishop_attacks &= !our_occupancy;
+
                     for valid_bishop_attack in valid_bishop_attacks.get_squares(){
                         let valid_bishop_attack_bb = valid_bishop_attack.to_bitboard();
                         if valid_bishop_attack_bb & their_occupancy != 0{
@@ -1194,7 +1211,7 @@ impl Position{
                                     to: valid_bishop_attack,
                                 }),
                                 promotion: None,
-                                capture: self.pieces[them.0].get_piece_type_at_square(valid_bishop_attack),
+                                capture: self.pieces[them.0].get_piece_type_at_square(valid_bishop_attack_bb),
                                 castling: None,
                                 en_passant: None, 
                             });
@@ -1255,7 +1272,7 @@ impl Position{
                                     to: valid_rook_attack,
                                 }),
                                 promotion: None,
-                                capture: self.pieces[them.0].get_piece_type_at_square(valid_rook_attack),
+                                capture: self.pieces[them.0].get_piece_type_at_square(valid_rook_attack_bb),
                                 castling: None,
                                 en_passant: None, 
                             });
@@ -1317,7 +1334,7 @@ impl Position{
                                 to: valid_queen_attack,
                             }),
                             promotion: None,
-                            capture: self.pieces[them.0].get_piece_type_at_square(valid_queen_attack),
+                            capture: self.pieces[them.0].get_piece_type_at_square(valid_queen_attack_bb),
                             castling: None,
                             en_passant: None, 
                         });
@@ -1356,7 +1373,7 @@ impl Position{
                             to: valid_king_attack,
                         }),
                         promotion: None,
-                        capture: self.pieces[them.0].get_piece_type_at_square(valid_king_attack),
+                        capture: self.pieces[them.0].get_piece_type_at_square(valid_king_attack_bb),
                         castling: None,
                         en_passant: None, 
                     });
@@ -1460,7 +1477,7 @@ impl Position{
 
                         if our_pins.all() & square.to_bitboard() != 0{
                             if piece_bb & our_pins.pins_h != 0{
-                                pin_path = DIRECTIONAL_MAP_FILE[square as usize];
+                                pin_path = DIRECTIONAL_MAP_RANK[square as usize];
                             }
                             else if piece_bb & our_pins.pins_v != 0{
                                 pin_path = DIRECTIONAL_MAP_RANK[square as usize];
@@ -1617,6 +1634,7 @@ impl Position{
                             }
                         }
                         else if piece == ROOK{
+
                             let rook_attacks = (get_rook_attacks(square, occupancy) & !our_occupancy) & pin_path;
                             
                             if rook_attacks & checker_square_bb != 0{
@@ -1689,7 +1707,7 @@ impl Position{
                                 }
                                 else if attack_bb & their_occupancy != 0{
                                     //find which piece the king is attacking
-                                    let piece = self.pieces[them.0].get_piece_type_at_square(square);
+                                    let piece = self.pieces[them.0].get_piece_type_at_square(attack_bb);
                                     //king eats the piece
                                     moves.push(Move{
                                         translation: Some(Translation { from: square, to: attack }),
@@ -1734,6 +1752,23 @@ impl Position{
         };
     }
 
+    pub fn print_position_pieces(&self){
+        println!("White Pieces:");
+        for piece in 0..6{
+            let piece_type = piece;
+            let piece_bb = self.pieces[0][piece_type];
+            let piece_num = piece_bb.count_ones();
+            println!("{}: {}", PIECES[piece_type], piece_num);
+        }
+        println!("Black Pieces:");
+        for piece in 0..6{
+            let piece_type = piece;
+            let piece_bb = self.pieces[1][piece_type];
+            let piece_num = piece_bb.count_ones();
+            println!("{}: {}", PIECES[piece_type], piece_num);
+        }
+    }
+
     pub fn make_move(&self, m: Move) -> Position{
         let mut new_position = self.clone();
         
@@ -1742,11 +1777,10 @@ impl Position{
         new_position.en_passant_square = None;
         new_position.side_to_move = !us;
 
-
         //if the move is not a castle and includes a translation
         if m.castling.is_none() && m.translation.is_some(){
             let translation = m.translation.unwrap();
-            let from_piece_wrapped = self.pieces[us.0].get_piece_type_at_square(translation.from);
+            let from_piece_wrapped = self.pieces[us.0].get_piece_type_at_square(translation.from.to_bitboard());
             if from_piece_wrapped.is_none(){
                 panic!("No piece at the from square!");
             }
@@ -1764,7 +1798,8 @@ impl Position{
                 }
                 else{
                     //check if en passant is possible
-                    if translation.to == translation.from + 16 || translation.to == translation.from - 16{
+
+                    if translation.to > 16 && translation.to == translation.from + 16 || translation.to == translation.from.wrapping_sub(16){
                         //check if pawn has enemy pawn next on the to square
                         let to_side_bb = translation.to.to_bitboard() << 1 | translation.to.to_bitboard() >> 1;
                         if to_side_bb & self.pieces[(!us).0][PAWN] != 0{
@@ -1893,6 +1928,17 @@ impl Position{
         if us == Side::BLACK{
             new_position.fullmove_number += 1;
         }
+        //if pawn and bishop overlap in new position print
+        /* 
+        if new_position.pieces[us.0].occupancy() & new_position.pieces[us.0][BISHOP] != 0{
+            //get piece that is moving in from 
+            let eval = self.evaluate();
+            println!("MOVE: {}  ", m);
+            println!("GAMESTATE: {}", eval.game_state);
+            print_position(self);
+            panic!("BISHOP OVERLAP!");
+        }
+        */
 
         return new_position;
     }

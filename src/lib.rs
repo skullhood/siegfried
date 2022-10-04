@@ -1,5 +1,7 @@
 extern crate lazy_static;
 
+pub mod tree;
+pub mod game;
 pub mod bitboard;
 pub mod position;
 pub mod display;
