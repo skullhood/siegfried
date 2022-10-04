@@ -1769,7 +1769,7 @@ impl Position{
         }
     }
 
-    pub fn make_move(&self, m: Move) -> Position{
+    pub fn make_move(&self, m: Move) -> Option<Position>{
         let mut new_position = self.clone();
         
         let us = self.side_to_move;
@@ -1928,19 +1928,13 @@ impl Position{
         if us == Side::BLACK{
             new_position.fullmove_number += 1;
         }
-        //if pawn and bishop overlap in new position print
-        /* 
-        if new_position.pieces[us.0].occupancy() & new_position.pieces[us.0][BISHOP] != 0{
-            //get piece that is moving in from 
-            let eval = self.evaluate();
-            println!("MOVE: {}  ", m);
-            println!("GAMESTATE: {}", eval.game_state);
-            print_position(self);
-            panic!("BISHOP OVERLAP!");
-        }
-        */
 
-        return new_position;
+        //check if king is missing from new position
+        if new_position.pieces[us.0][KING] == Bitboard::EMPTY || new_position.pieces[(!us).0][KING] == Bitboard::EMPTY{
+            return None;
+        }
+
+        return Some(new_position);
     }
 }
 

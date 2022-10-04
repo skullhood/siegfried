@@ -50,8 +50,14 @@ impl Game{
 
     fn make_move(&mut self, m: Move){
         println!("Move played: {} ", m);
-        self.position = self.position.make_move(m);
-        self.move_history.push(m);
+        let new_position = self.position.make_move(m);
+        if new_position.is_some(){
+            self.position = new_position.unwrap();
+            self.move_history.push(m);
+        }
+        else{
+            panic!("Invalid move! {}", m);
+        }
         print_position(&self.position);
         println!("");
     }
@@ -115,7 +121,7 @@ impl Game{
 
         if self.player_side.is_some(){
             let eval = self.position.evaluate();
-            let game_state = eval.game_state;
+            let mut game_state = eval.game_state;
 
             while game_state == GameState::ONGOING || game_state == GameState::CHECK{
                 if self.player_side.unwrap() == self.position.side_to_move{
@@ -130,17 +136,19 @@ impl Game{
                     let best_move = best_moves[0];
                     self.make_move(best_move);
                 }
+                game_state = self.position.evaluate().game_state;
             }
         }
         else{
             let eval = self.position.evaluate();
-            let game_state = eval.game_state;
+            let mut game_state = eval.game_state;
             while game_state == GameState::ONGOING || game_state == GameState::CHECK{
                 println!("{} is thinking...", self.position.side_to_move);
                 let mut tree = PositionTree::new(self.position);
                 let best_moves = tree.expand_to_depth(self.max_depth, ExpandStyle::DEFAULT, self.position.side_to_move);
                 let best_move = best_moves[0];
                 self.make_move(best_move);
+                game_state = self.position.evaluate().game_state;
             }
         }
 

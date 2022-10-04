@@ -112,25 +112,34 @@ impl PositionTree{
         pub score: i32,
         */
 
-    fn get_node_children(&self, index: usize) -> Vec<Node>{
+    fn get_node_children(&self, index: usize) -> Vec<Option<Node>>{
         let node = self.get_node(index);
         node.available_moves.clone().into_par_iter().map(|m| {
-            let new_position = node.position.make_move(m);
-            let eval = new_position.evaluate();
-            Node{
-                parent_move: Some(m.clone()),
-                position: new_position,
-                available_moves: eval.moves,
-                score: eval.score,
-                game_state: eval.game_state,
-                depth: node.depth + 1
+            let new_position_wrapped = node.position.make_move(m);
+            if new_position_wrapped.is_some(){
+                let new_position = new_position_wrapped.unwrap();
+                let eval = new_position.evaluate();
+                Some(Node{
+                    parent_move: Some(m.clone()),
+                    position: new_position,
+                    available_moves: eval.moves,
+                    score: eval.score,
+                    game_state: eval.game_state,
+                    depth: node.depth + 1
+                })
             }
-        }).collect::<Vec<Node>>()
+            else{
+                None
+            }
+        }).collect::<Vec<Option<Node>>>()
     }
 
     fn expand_node(&mut self, index: usize, expand_style: ExpandStyle, playing_side: Side){
         //sort moves by score descending
-        let mut children = self.get_node_children(index);
+        let children_opt = self.get_node_children(index);
+        
+        //filter out None
+        let mut children = children_opt.into_iter().filter(|c| c.is_some()).map(|c| c.unwrap()).collect::<Vec<Node>>();
 
         let playing_multiplier = if playing_side == Side::WHITE{
             -1.0
