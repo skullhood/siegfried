@@ -2,6 +2,7 @@ use std::ops::{Shr};
 
 use crate::{bitboard::*, position::{Position, SidePiecesMethods}, types::*};
 
+/* 
 const UNICODE_WHITE_PAWN: char = '♙';
 const UNICODE_WHITE_KNIGHT: char = '♘';
 const UNICODE_WHITE_BISHOP: char = '♗';
@@ -15,7 +16,21 @@ const UNICODE_BLACK_BISHOP: char = '♝';
 const UNICODE_BLACK_ROOK: char = '♜';
 const UNICODE_BLACK_QUEEN: char = '♛';
 const UNICODE_BLACK_KING: char = '♚';
+*/
 
+const UNICODE_WHITE_PAWN: char = 'P';
+const UNICODE_WHITE_KNIGHT: char = 'N';
+const UNICODE_WHITE_BISHOP: char = 'B';
+const UNICODE_WHITE_ROOK: char = 'R';
+const UNICODE_WHITE_QUEEN: char = 'Q';
+const UNICODE_WHITE_KING: char = 'K';
+
+const UNICODE_BLACK_PAWN: char = 'p';
+const UNICODE_BLACK_KNIGHT: char = 'n';
+const UNICODE_BLACK_BISHOP: char = 'b';
+const UNICODE_BLACK_ROOK: char = 'r';
+const UNICODE_BLACK_QUEEN: char = 'q';
+const UNICODE_BLACK_KING: char = 'k';
 //BIT PRINTING UTILITY CONSTANTS
 pub const BIT_8 : u8 = 0b10000000;
 pub const BIT_7 : u8 = 0b01000000;

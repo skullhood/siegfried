@@ -275,7 +275,7 @@ impl PositionTree{
 
             self.backpropagate(parents_for_backpropagation);
 
-            println!("At depth {}", self.depth);
+            //println!("At depth {}", self.depth);
         }
 
         //get all children of root
@@ -332,7 +332,7 @@ impl PositionTree{
 
             self.backpropagate(parents_for_backpropagation);
 
-            println!("At depth {}", self.depth);
+            //println!("At depth {}", self.depth);
         }
 
         //get all children of root

@@ -23,3 +23,6 @@ criterion = "0.3"
 [[bench]]
 name = "bitmath"
 harness = false
+
+[profile.release]
+opt-level = 3

@@ -1,37 +1,44 @@
-use std::io::BufRead;
 
 use siegfried::game::Game;
 use siegfried::types::{Side, SideConstants};
 
-fn  main() {
+fn get_player_side() -> Option<Side>{
+    let mut input = String::new();
+    let side;
 
-    //ask user for side
-    let input = std::io::stdin();
-    let mut input = input.lock();
-    let mut side = String::new();
-    let mut player_side: Option<Side> = None;
+    println!("Choose side (w/b/n):");
 
     loop{
-        side.clear();
-        println!("Choose side (w/b/none): ");
-        input.read_line(&mut side).unwrap();
-        let side = side.trim().to_lowercase();
-        if side == "w"{
-            player_side = Some(Side::WHITE);
+        input.clear();
+        std::io::stdin().read_line(&mut input).unwrap();
+
+        //parse input
+        let input = input.trim();
+        let input = input.to_lowercase();
+
+        if input == "w" || input == "white"{
+            side = Some(Side::WHITE);
             break;
         }
-        else if side == "b"{
-            player_side = Some(Side::BLACK);
+        else if input == "b" || input == "black"{
+            side = Some(Side::BLACK);
             break;
         }
-        else if side == "none"{
+        else if input == "n" || input == "none"{
+            side = None;
             break;
         }
         else{
-            println!("Invalid side: '{}', try again: ", side);
+            println!("Invalid side: '{}'!, Try again: ", input);
         }
     }
+    side
+}
 
+fn  main() {
+
+    let player_side: Option<Side> = get_player_side();
+    
     let mut game = Game::new();
 
     game.play(player_side);

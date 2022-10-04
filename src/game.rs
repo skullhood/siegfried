@@ -136,6 +136,7 @@ impl Game{
             let eval = self.position.evaluate();
             let game_state = eval.game_state;
             while game_state == GameState::ONGOING || game_state == GameState::CHECK{
+                println!("{} is thinking...", self.position.side_to_move);
                 let mut tree = PositionTree::new(self.position);
                 let best_moves = tree.expand_to_depth(self.max_depth, ExpandStyle::DEFAULT, self.position.side_to_move);
                 let best_move = best_moves[0];
