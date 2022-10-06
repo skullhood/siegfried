@@ -16,7 +16,7 @@ impl ExpandStyle{
 
 fn calculate_all_moves_to_expand(total_moves: usize) -> usize{
 
-    let moves_to_expand = 4 * (total_moves as f64).sqrt() as usize;
+    let moves_to_expand = 7 * (total_moves as f64).sqrt() as usize;
 
     if moves_to_expand > total_moves{
         return total_moves;

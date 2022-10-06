@@ -1,9 +1,9 @@
-use crate::{position::{Position, Move}, tree::{PositionTree, ExpandStyle}, types::{Side, GameState, GameStateConstants}, display::print_position};
+use crate::{position::{Position, Move}, tree::{PositionTree, ExpandStyle}, types::{Side, GameState, GameStateConstants, SideConstants}, display::print_position};
 
 pub struct Game{
     position: Position,
     player_side: Option<Side>,
-    move_history: Vec<Move>,
+    move_history: Vec<String>,
     max_depth: u8,
 }
 
@@ -44,16 +44,18 @@ impl Game{
         self.player_side
     }
 
-    pub fn get_move_history(&self) -> &Vec<Move>{
+    pub fn get_move_history(&self) -> &Vec<String>{
         &self.move_history
     }
 
     fn make_move(&mut self, m: Move){
         println!("Move played: {} ", m);
         let new_position = self.position.make_move(m);
+
         if new_position.is_some(){
+            let formatted_move = self.position.get_formatted_move(m);
             self.position = new_position.unwrap();
-            self.move_history.push(m);
+            self.move_history.push(formatted_move);
         }
         else{
             panic!("Invalid move! {}", m);
@@ -94,19 +96,33 @@ impl Game{
         }
     }
 
-    pub fn get_pgn(&self) -> String{
+    pub fn get_pgn(&self, winner: Side) -> String{
         let mut pgn = String::new();
         let mut move_count = 1;
         let mut white_plays = true;
+        
         for m in &self.move_history{
+
             if white_plays{
                 pgn += &format!("{}. ", move_count);
                 move_count += 1;
             }
-            pgn.push_str(&m.get_tstring());
+
+            pgn.push_str(format!("{}", m).as_str());
             pgn.push_str(" ");
             white_plays = !white_plays;
         }
+
+        if winner == Side::WHITE{
+            pgn += "1-0";
+        }
+        else if winner == Side::BLACK{
+            pgn += "0-1";
+        }
+        else{
+            pgn += "1/2-1/2";
+        }
+
         pgn
     }
 
@@ -162,7 +178,7 @@ impl Game{
             println!("Draw! Reason: {}", state_note);
         }
 
-        println!("PGN: {}", self.get_pgn());
+        println!("PGN: {}", self.get_pgn(!side_to_move));
 
     }
 

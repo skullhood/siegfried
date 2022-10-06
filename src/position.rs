@@ -27,7 +27,7 @@ pub struct PositionEvaluation{
 }
 
 const PIN_MULTIPLIER: f32 = 10.0;
-const SQUARE_MULTIPLIER: f32 = 10.0;
+const SQUARE_MULTIPLIER: f32 = 5.0;
 
 const SCORE_WHITE_WINS: f32 = 1000000.0;
 const SCORE_BLACK_WINS: f32 = -1000000.0;
@@ -740,6 +740,39 @@ impl Position{
         };
     }
     
+    pub fn get_formatted_move(self, m: Move) -> String{
+        let mut move_string = String::new();
+
+        if m.translation.is_some(){
+            let from = m.translation.unwrap().from;
+            //get the piece
+            let piece = self.pieces[self.side_to_move.0].get_piece_type_at_square(from.to_bitboard());
+            if piece.is_some(){
+                let piece = piece.unwrap();
+                
+                if piece == KNIGHT{
+                    move_string.push('N');
+                }
+                else if piece == BISHOP{
+                    move_string.push('B');
+                }
+                else if piece == ROOK{
+                    move_string.push('R');
+                }
+                else if piece == QUEEN{
+                    move_string.push('Q');
+                }
+                else if piece == KING{
+                    move_string.push('K');
+                }
+            }
+        }
+
+        move_string += format!("{}", m).as_str();
+
+        return move_string;
+    }
+
     fn get_absolute_pins_for_side(self, enemy_attacks: SideAttacks, occupancy: Bitboard, defender_occupancy: Bitboard, defender_king_square: Square) -> AbsolutePins{
         let mut pins_h: Bitboard = 0;
         let mut pins_v: Bitboard = 0;
